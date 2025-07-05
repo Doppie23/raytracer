@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      console.log("hello, world");
+      (async () => {
+        let mem;
+
+        const _print = (ptr, len) => {
+          const msgBytes = mem.slice(ptr, ptr + len);
+          const msg = new TextDecoder().decode(msgBytes);
+          console.log(msg);
+        };
+
+        const env = {
+          _print,
+        };
+
+        const res = await fetch("zig-out/bin/raytracer.wasm");
+        const bytes = await res.arrayBuffer();
+
+        const results = await WebAssembly.instantiate(bytes, { env });
+        const instance = results.instance;
+        mem = new Uint8Array(instance.exports.memory.buffer);
+
+        const r = instance.exports.add(5, 6);
+
+        console.log(r);
+      })();
+    </script>
+    <h1>test</h1>
+  </body>
+</html>
