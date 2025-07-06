@@ -3,8 +3,9 @@ const std = @import("std");
 extern fn _print(ptr: usize, len: usize) void;
 
 fn print(comptime fmt: []const u8, args: anytype) void {
-    var buf: [8192]u8 = undefined;
-    const string = std.fmt.bufPrint(&buf, fmt, args) catch unreachable;
+    const gpa = std.heap.wasm_allocator;
+    const string = std.fmt.allocPrint(gpa, fmt, args) catch unreachable;
+    defer gpa.free(string);
     _print(@intFromPtr(string.ptr), string.len);
 }
 
@@ -13,17 +14,13 @@ export fn test_fn() i32 {
 }
 
 export fn add(a: i32, b: i32) i32 {
-    // var gpa = std.heap.wasm_allocator(.{}).init;
-    // const alloc: std.mem.Allocator = .{
-    //     .ptr = undefined,
-    //     .vtable = &std.heap.WasmAllocator.vtable,
-    // };
-    // // defer gpa.deinit();
-    //
-    // // var alloc = gpa.allocator();
-    //
-    // _ = alloc.alloc(u8, 256) catch unreachable;
+    const gpa = std.heap.wasm_allocator;
 
-    print("tset {d} b: {d}", .{ a, b });
+    // const alloc = gpa.allocator();
+
+    const xs = gpa.alloc(u8, 256) catch unreachable;
+    defer gpa.free(xs);
+
+    print("tset {d} b: {d}, len: {d}", .{ a, b, xs.len });
     return a + b;
 }

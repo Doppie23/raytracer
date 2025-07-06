@@ -9,9 +9,10 @@
     <script>
       console.log("hello, world");
       (async () => {
-        let mem;
+        let exports;
 
         const _print = (ptr, len) => {
+          const mem = new Uint8Array(instance.exports.memory.buffer);
           const msgBytes = mem.slice(ptr, ptr + len);
           const msg = new TextDecoder().decode(msgBytes);
           console.log(msg);
@@ -26,7 +27,7 @@
 
         const results = await WebAssembly.instantiate(bytes, { env });
         const instance = results.instance;
-        mem = new Uint8Array(instance.exports.memory.buffer);
+        exports = instance.exports;
 
         const r = instance.exports.add(5, 6);
 
