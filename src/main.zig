@@ -24,37 +24,24 @@ fn print(comptime fmt: []const u8, args: anytype) void {
     _print(string.ptr, string.len);
 }
 
+const vertices_count = 4;
+const vertices = [_]f32{
+    -1.0, -1.0, 0.0,
+    1.0,  -1.0, 0.0,
+    -1.0, 1.0,  0.0,
+    1.0,  1.0,  0.0,
+};
+
+const uvs = [_]f32{
+    0.0, 1.0,
+    1.0, 1.0,
+    0.0, 0.0,
+    1.0, 0.0,
+};
+
 export fn init() void {
-    const vertex =
-        \\ attribute vec3 a_Position;
-        \\ attribute vec2 a_Uv;
-        \\ varying highp vec2 v_Uv;
-        \\ void main() {
-        \\     gl_Position = vec4(a_Position, 1.0);
-        \\     v_Uv = a_Uv;
-        \\ }
-    ;
-    const fragment =
-        \\ varying highp vec2 v_Uv;
-        \\ void main() {
-        \\     gl_FragColor = vec4(v_Uv, 0.0, 1.0);
-        \\ }
-    ;
-
-    const vertices_count = 4;
-    const vertices = [_]f32{
-        -1.0, -1.0, 0.0,
-        1.0,  -1.0, 0.0,
-        -1.0, 1.0,  0.0,
-        1.0,  1.0,  0.0,
-    };
-
-    const uvs = [_]f32{
-        0.0, 1.0,
-        1.0, 1.0,
-        0.0, 0.0,
-        1.0, 0.0,
-    };
+    const vertex = @embedFile("vertex.glsl");
+    const fragment = @embedFile("fragment.glsl");
 
     const vertex_idx = gl.compileShader(vertex.ptr, vertex.len, gl.VERTEX_SHADER);
 
@@ -64,10 +51,10 @@ export fn init() void {
     gl.useProgram(program);
 
     const pos = "a_Position";
-    gl.createBufferAndBind(program, &vertices, vertices.len, 3, pos.ptr, pos.len);
+    gl.createBufferAndBind(program, &vertices, vertices.len, vertices.len / vertices_count, pos.ptr, pos.len);
 
     const uv = "a_Uv";
-    gl.createBufferAndBind(program, &uvs, uvs.len, 2, uv.ptr, uv.len);
+    gl.createBufferAndBind(program, &uvs, uvs.len, uvs.len / vertices_count, uv.ptr, uv.len);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
