@@ -85,6 +85,22 @@
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, count);
   };
 
+  const uniform3f = (programIdx, uniformPtr, uniformLen, x, y, z) => {
+    const name = readString(uniformPtr, uniformLen);
+    const loc = gl.getUniformLocation(programs[programIdx], name);
+    gl.uniform3f(loc, x, y, z);
+  };
+  const uniform1f = (programIdx, uniformPtr, uniformLen, x) => {
+    const name = readString(uniformPtr, uniformLen);
+    const loc = gl.getUniformLocation(programs[programIdx], name);
+    gl.uniform1f(loc, x);
+  };
+  const uniform1i = (programIdx, uniformPtr, uniformLen, x) => {
+    const name = readString(uniformPtr, uniformLen);
+    const loc = gl.getUniformLocation(programs[programIdx], name);
+    gl.uniform1i(loc, x);
+  };
+
   const env = {
     _print,
     compileShader,
@@ -92,6 +108,9 @@
     useProgram,
     createBufferAndBind,
     drawArrays,
+    uniform3f,
+    uniform1f,
+    uniform1i,
 
     clearColor: (r, g, b, a) => gl.clearColor(r, g, b, a),
     clear: (x) => gl.clear(x),
