@@ -38,5 +38,21 @@ pub fn Vec3(comptime T: type) type {
                 .z = self.z / len,
             };
         }
+
+        pub fn cross(a: Vec3(T), b: Vec3(T)) Vec3(T) {
+            return .{
+                .x = a.y * b.z - a.z * b.y,
+                .y = a.z * b.x - a.x * b.z,
+                .z = a.x * b.y - a.y * b.x,
+            };
+        }
+
+        pub fn mult(self: Vec3(T), n: T) Vec3(T) {
+            return .{
+                .x = self.x * n,
+                .y = self.y * n,
+                .z = self.z * n,
+            };
+        }
     };
 }

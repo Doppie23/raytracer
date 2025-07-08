@@ -15,19 +15,53 @@ const Sphere = struct {
 const Camera = struct {
     position: Vec3(f32),
     direction: Vec3(f32),
+    yaw: f32,
+    pitch: f32,
     fov: f32,
 
     fn init(fov: f32) Camera {
-        return .{
+        var c = Camera{
             .position = Vec3(f32){ .x = 0, .y = 0, .z = -2 },
             .direction = Vec3(f32){ .x = 0, .y = 0, .z = 1 },
+            .yaw = 90.0,
+            .pitch = 0.0,
             .fov = fov,
         };
+        c.updateDirection();
+        return c;
     }
 
-    /// returns the direction vector normalized
-    fn getDirection(self: Camera) Vec3(f32) {
-        return self.direction.normalized();
+    fn forward(self: Camera) Vec3(f32) {
+        return (Vec3(f32){ .x = self.direction.x, .y = 0, .z = self.direction.z }).normalized();
+    }
+
+    fn left(self: Camera) Vec3(f32) {
+        return self.forward().cross(.{ .x = 0, .y = 1, .z = 0 }).normalized();
+    }
+
+    fn updateDirection(self: *Camera) void {
+        const rad_yaw = std.math.degreesToRadians(self.yaw);
+        const rad_pitch = std.math.degreesToRadians(self.pitch);
+
+        self.direction = (Vec3(f32){
+            .x = @cos(rad_pitch) * @cos(rad_yaw),
+            .y = @sin(rad_pitch),
+            .z = @cos(rad_pitch) * @sin(rad_yaw),
+        }).normalized();
+    }
+
+    fn addYaw(self: *Camera, degrees: f32) void {
+        self.yaw += degrees;
+        self.updateDirection();
+    }
+
+    fn addPitch(self: *Camera, degrees: f32) void {
+        self.pitch += degrees;
+
+        if (self.pitch > 89.0) self.pitch = 89.0;
+        if (self.pitch < -89.0) self.pitch = -89.0;
+
+        self.updateDirection();
     }
 };
 
@@ -154,7 +188,7 @@ export fn tick(width: i32, height: i32) void {
     gl.uniform(i32, program, "heigth", height);
 
     gl.uniform(Vec3(f32), program, "camera.position", camera.position);
-    gl.uniform(Vec3(f32), program, "camera.direction", camera.getDirection());
+    gl.uniform(Vec3(f32), program, "camera.direction", camera.direction);
     gl.uniform(f32, program, "camera.fov", camera.fov);
 
     gl.uniform(bool, program, "shadeFloor", true);
@@ -205,20 +239,28 @@ export fn onKeyDown(key_code: usize, down: bool) void {
     }
 }
 
+export fn onMouseMove(delta_x: f32, delta_y: f32) void {
+    const sens = 0.1;
+    camera.addYaw(-delta_x * sens);
+    camera.addPitch(-delta_y * sens);
+}
+
 fn handleKeyState() void {
     const speed = 0.05;
 
+    const f = camera.forward();
+    const l = camera.left();
     if (keyState.forwards) {
-        camera.position.add(.{ .x = 0, .y = 0, .z = speed });
+        camera.position.add(f.mult(speed));
     }
     if (keyState.backwards) {
-        camera.position.add(.{ .x = 0, .y = 0, .z = -speed });
+        camera.position.add(f.mult(-speed));
     }
     if (keyState.right) {
-        camera.position.add(.{ .x = speed, .y = 0, .z = 0 });
+        camera.position.add(l.mult(-speed));
     }
     if (keyState.left) {
-        camera.position.add(.{ .x = -speed, .y = 0, .z = 0 });
+        camera.position.add(l.mult(speed));
     }
     if (keyState.up) {
         camera.position.add(.{ .x = 0, .y = speed, .z = 0 });
