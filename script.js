@@ -123,14 +123,27 @@
   const instance = results.instance;
   exports = instance.exports;
 
+  const keymap = {
+    KeyW: 0,
+    ArrowUp: 0,
+    KeyA: 1,
+    ArrowLeft: 1,
+    KeyS: 2,
+    ArrowDown: 2,
+    KeyD: 3,
+    ArrowRight: 3,
+    Space: 4,
+    ShiftLeft: 5,
+  };
   document.addEventListener("keydown", (e) => {
-    console.log(e);
-    // TODO: dont use keyCode
-    exports.onKeyDown(e.keyCode, true);
+    if (e.code in keymap) {
+      exports.onKeyDown(keymap[e.code], true);
+    }
   });
   document.addEventListener("keyup", (e) => {
-    // TODO: dont use keyCode
-    exports.onKeyDown(e.keyCode, false);
+    if (e.code in keymap) {
+      exports.onKeyDown(keymap[e.code], false);
+    }
   });
 
   exports.init();

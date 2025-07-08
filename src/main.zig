@@ -1,91 +1,9 @@
 const std = @import("std");
+const print = @import("utils.zig").print;
+const gl = @import("gl.zig");
+const math = @import("math.zig");
 
-fn Vec3(comptime T: type) type {
-    return struct {
-        x: T,
-        y: T,
-        z: T,
-
-        fn add(self: *Vec3(T), other: Vec3(T)) void {
-            self.x += other.x;
-            self.y += other.y;
-            self.z += other.z;
-        }
-
-        fn length(self: Vec3(T)) f32 {
-            return @sqrt(self.x * self.x + self.y * self.y + self.z * self.z);
-        }
-
-        fn normalized(self: Vec3(T)) Vec3(T) {
-            const len = self.length();
-            if (@abs(1 - len) < 0.001) {
-                return self;
-            }
-
-            return .{
-                .x = self.x / len,
-                .y = self.y / len,
-                .z = self.z / len,
-            };
-        }
-    };
-}
-
-const gl = struct {
-    const COLOR_BUFFER_BIT = 16384;
-    const VERTEX_SHADER = 35633;
-    const FRAGMENT_SHADER = 35632;
-
-    extern fn compileShader(ptr: [*]const u8, len: usize, shaderType: usize) usize;
-    extern fn createProgram(vertexShaderIdx: usize, fragmentShaderIdx: usize) usize;
-    extern fn useProgram(programIdx: usize) void;
-    extern fn createBufferAndBind(programIdx: usize, dataPtr: [*]const f32, dataLen: usize, dataSize: usize, attPtr: [*]const u8, attLen: usize) void;
-    extern fn drawArrays(count: usize) void;
-    extern fn uniform3f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32, y: f32, z: f32) void;
-    extern fn uniform1f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32) void;
-    extern fn uniform1i(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: i32) void;
-
-    extern fn clearColor(r: f32, g: f32, b: f32, a: f32) void;
-    extern fn clear(color: usize) void;
-
-    fn uniform(comptime T: type, programIdx: usize, name: []const u8, value: T) void {
-        if (T == Vec3(f32)) {
-            return uniform3f(programIdx, name.ptr, name.len, value.x, value.y, value.z);
-        }
-        if (T == f32) {
-            return uniform1f(programIdx, name.ptr, name.len, value);
-        }
-        if (T == i32) {
-            return uniform1i(programIdx, name.ptr, name.len, value);
-        }
-
-        @compileError("Unsupported uniform type");
-    }
-};
-
-extern fn _print(ptr: [*]const u8, len: usize) void;
-
-fn print(comptime fmt: []const u8, args: anytype) void {
-    const gpa = std.heap.wasm_allocator;
-    const string = std.fmt.allocPrint(gpa, fmt, args) catch unreachable;
-    defer gpa.free(string);
-    _print(string.ptr, string.len);
-}
-
-const vertices_count = 4;
-const vertices = [_]f32{
-    -1.0, -1.0, 0.0,
-    1.0,  -1.0, 0.0,
-    -1.0, 1.0,  0.0,
-    1.0,  1.0,  0.0,
-};
-
-const uvs = [_]f32{
-    0.0, 1.0,
-    1.0, 1.0,
-    0.0, 0.0,
-    1.0, 0.0,
-};
+const Vec3 = math.Vec3;
 
 const Sphere = struct {
     position: Vec3(f32),
@@ -129,8 +47,23 @@ var keyState: KeyState = .{
     .down = false,
 };
 
+const vertices_count = 4;
+const vertices = [_]f32{
+    -1.0, -1.0, 0.0,
+    1.0,  -1.0, 0.0,
+    -1.0, 1.0,  0.0,
+    1.0,  1.0,  0.0,
+};
+
+const uvs = [_]f32{
+    0.0, 1.0,
+    1.0, 1.0,
+    0.0, 0.0,
+    1.0, 0.0,
+};
+
 const spheres = [_]Sphere{
-    Sphere{ .position = Vec3(f32){ .x = 0, .y = 0.5, .z = 4 }, .radius = 1 },
+    Sphere{ .position = Vec3(f32){ .x = 0, .y = 0.5, .z = 0 }, .radius = 1 },
 };
 
 var camera = Camera.init(90);
@@ -179,14 +112,14 @@ export fn tick(width: i32, height: i32) void {
 }
 
 export fn onKeyDown(key_code: usize, down: bool) void {
+    // see keymap in js for key codes
     switch (key_code) {
-        87 => keyState.forwards = down,
-        68 => keyState.right = down,
-        65 => keyState.left = down,
-        83 => keyState.backwards = down,
-        32 => keyState.up = down,
-        16 => keyState.down = down,
-        // 87 => camera.position.add(.{ .x = 0, .y = 0, .z = 0.05 }),
+        0 => keyState.forwards = down,
+        1 => keyState.left = down,
+        2 => keyState.backwards = down,
+        3 => keyState.right = down,
+        4 => keyState.up = down,
+        5 => keyState.down = down,
         else => {},
     }
 }
