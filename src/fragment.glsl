@@ -10,9 +10,8 @@ struct Ray {
 
 struct Camera {
     vec3 position;
-    vec3 p0;
-    vec3 p1;
-    vec3 p2;
+    vec3 direction;
+    float fov;
 };
 
 struct Intersection {
@@ -30,6 +29,8 @@ struct Sphere {
 
 varying highp vec2 v_Uv;
 
+uniform int width;
+uniform int heigth;
 uniform Camera camera;
 uniform Sphere sphere[SPHERE_SIZE];
 uniform int sphereCount;
@@ -42,8 +43,31 @@ vec3 getPoint(Ray ray, float t) {
     return ray.origin + (ray.direction * t);
 }
 
+float getDistanceToViewPlane(float planeWidth, float planeHeight) {
+    return sqrt((planeWidth * planeWidth) + (planeHeight * planeHeight)) / (2.0 * tan(radians(camera.fov) / 2.0));
+}
+
 Ray getRayForPixel(Camera camera, vec2 uv) {
-    vec3 pixelLocation = camera.p0 + uv.x * (camera.p1 - camera.p0) + uv.y * (camera.p2 - camera.p0);
+    float planeWidth;
+    float planeHeight;
+    if (width >= heigth) {
+        planeWidth = 1.0;
+        planeHeight = 1.0 * float(heigth) / float(width);
+    } else {
+        planeWidth = 1.0 * float(width) / float(heigth);
+        planeHeight = 1.0;
+    }
+
+    vec3 right = cross(vec3(0.0, 1.0, 0.0), camera.direction);
+    vec3 up = cross(camera.direction, right);
+
+    vec3 centerPlane = camera.position + camera.direction * getDistanceToViewPlane(planeWidth, planeHeight);
+
+    vec3 p0 = centerPlane + (planeHeight / 2.0) * up - (planeWidth / 2.0) * right;
+    vec3 p1 = centerPlane + (planeHeight / 2.0) * up + (planeWidth / 2.0) * right;
+    vec3 p2 = centerPlane - (planeHeight / 2.0) * up - (planeWidth / 2.0) * right;
+
+    vec3 pixelLocation = p0 + uv.x * (p1 - p0) + uv.y * (p2 - p0);
     vec3 direction = pixelLocation - camera.position;
 
     return Ray(camera.position, normalize(direction));

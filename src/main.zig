@@ -5,6 +5,23 @@ fn Vec3(comptime T: type) type {
         x: T,
         y: T,
         z: T,
+
+        fn length(self: Vec3(T)) f32 {
+            return @sqrt(self.x * self.x + self.y * self.y + self.z * self.z);
+        }
+
+        fn normalized(self: Vec3(T)) Vec3(T) {
+            const len = self.length();
+            if (@abs(1 - len) < 0.001) {
+                return self;
+            }
+
+            return .{
+                .x = self.x / len,
+                .y = self.y / len,
+                .z = self.z / len,
+            };
+        }
     };
 }
 
@@ -71,21 +88,20 @@ const Sphere = struct {
 
 const Camera = struct {
     position: Vec3(f32),
-    p0: Vec3(f32),
-    p1: Vec3(f32),
-    p2: Vec3(f32),
+    direction: Vec3(f32),
+    fov: f32,
 
-    fn init() Camera {
+    fn init(fov: f32) Camera {
         return .{
             .position = Vec3(f32){ .x = 0, .y = 0, .z = -2 },
-            .p0 = Vec3(f32){ .x = -1, .y = 1, .z = 0 },
-            .p1 = Vec3(f32){ .x = 1, .y = 1, .z = 0 },
-            .p2 = Vec3(f32){ .x = -1, .y = 0, .z = 0 },
-            // (0; 0,5; -2)
-            // (-0,5; 0,84305316; -1,0349569)
-            // (0,5; 0,84305316; -1,0349569)
-            // (-0,5; 0,15694684; -1,0349569)
+            .direction = Vec3(f32){ .x = 0, .y = 0, .z = 1 },
+            .fov = fov,
         };
+    }
+
+    /// returns the direction vector normalized
+    fn getDirection(self: Camera) Vec3(f32) {
+        return self.direction.normalized();
     }
 };
 
@@ -93,9 +109,9 @@ const spheres = [_]Sphere{
     Sphere{ .position = Vec3(f32){ .x = 0, .y = 0.5, .z = 4 }, .radius = 1 },
 };
 
-const camera = Camera.init();
+const camera = Camera.init(90);
 
-export fn init() void {
+export fn init(width: i32, height: i32) void {
     const vertex = @embedFile("vertex.glsl");
     const fragment = @embedFile("fragment.glsl");
 
@@ -116,10 +132,12 @@ export fn init() void {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
+    gl.uniform(i32, program, "width", width);
+    gl.uniform(i32, program, "heigth", height);
+
     gl.uniform(Vec3(f32), program, "camera.position", camera.position);
-    gl.uniform(Vec3(f32), program, "camera.p0", camera.p0);
-    gl.uniform(Vec3(f32), program, "camera.p1", camera.p1);
-    gl.uniform(Vec3(f32), program, "camera.p2", camera.p2);
+    gl.uniform(Vec3(f32), program, "camera.direction", camera.getDirection());
+    gl.uniform(f32, program, "camera.fov", camera.fov);
 
     gl.uniform(i32, program, "sphereCount", spheres.len);
     inline for (spheres, 0..) |sphere, i| {

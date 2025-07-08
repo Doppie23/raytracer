@@ -123,5 +123,5 @@
   const instance = results.instance;
   exports = instance.exports;
 
-  exports.init();
+  exports.init(canvas.width, canvas.height);
 })();
