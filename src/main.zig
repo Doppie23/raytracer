@@ -6,6 +6,12 @@ fn Vec3(comptime T: type) type {
         y: T,
         z: T,
 
+        fn add(self: *Vec3(T), other: Vec3(T)) void {
+            self.x += other.x;
+            self.y += other.y;
+            self.z += other.z;
+        }
+
         fn length(self: Vec3(T)) f32 {
             return @sqrt(self.x * self.x + self.y * self.y + self.z * self.z);
         }
@@ -105,13 +111,33 @@ const Camera = struct {
     }
 };
 
+const KeyState = struct {
+    forwards: bool,
+    backwards: bool,
+    left: bool,
+    right: bool,
+    up: bool,
+    down: bool,
+};
+
+var keyState: KeyState = .{
+    .forwards = false,
+    .backwards = false,
+    .left = false,
+    .right = false,
+    .up = false,
+    .down = false,
+};
+
 const spheres = [_]Sphere{
     Sphere{ .position = Vec3(f32){ .x = 0, .y = 0.5, .z = 4 }, .radius = 1 },
 };
 
-const camera = Camera.init(90);
+var camera = Camera.init(90);
 
-export fn init(width: i32, height: i32) void {
+var program: usize = 0;
+
+export fn init() void {
     const vertex = @embedFile("vertex.glsl");
     const fragment = @embedFile("fragment.glsl");
 
@@ -119,7 +145,7 @@ export fn init(width: i32, height: i32) void {
 
     const fragment_idx = gl.compileShader(fragment.ptr, fragment.len, gl.FRAGMENT_SHADER);
 
-    const program = gl.createProgram(vertex_idx, fragment_idx);
+    program = gl.createProgram(vertex_idx, fragment_idx);
     gl.useProgram(program);
 
     const pos = "a_Position";
@@ -127,6 +153,10 @@ export fn init(width: i32, height: i32) void {
 
     const uv = "a_Uv";
     gl.createBufferAndBind(program, &uvs, uvs.len, uvs.len / vertices_count, uv.ptr, uv.len);
+}
+
+export fn tick(width: i32, height: i32) void {
+    handleKeyState();
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -146,4 +176,40 @@ export fn init(width: i32, height: i32) void {
     }
 
     gl.drawArrays(vertices_count);
+}
+
+export fn onKeyDown(key_code: usize, down: bool) void {
+    switch (key_code) {
+        87 => keyState.forwards = down,
+        68 => keyState.right = down,
+        65 => keyState.left = down,
+        83 => keyState.backwards = down,
+        32 => keyState.up = down,
+        16 => keyState.down = down,
+        // 87 => camera.position.add(.{ .x = 0, .y = 0, .z = 0.05 }),
+        else => {},
+    }
+}
+
+fn handleKeyState() void {
+    const speed = 0.05;
+
+    if (keyState.forwards) {
+        camera.position.add(.{ .x = 0, .y = 0, .z = speed });
+    }
+    if (keyState.backwards) {
+        camera.position.add(.{ .x = 0, .y = 0, .z = -speed });
+    }
+    if (keyState.right) {
+        camera.position.add(.{ .x = speed, .y = 0, .z = 0 });
+    }
+    if (keyState.left) {
+        camera.position.add(.{ .x = -speed, .y = 0, .z = 0 });
+    }
+    if (keyState.up) {
+        camera.position.add(.{ .x = 0, .y = speed, .z = 0 });
+    }
+    if (keyState.down) {
+        camera.position.add(.{ .x = 0, .y = -speed, .z = 0 });
+    }
 }

@@ -123,5 +123,21 @@
   const instance = results.instance;
   exports = instance.exports;
 
-  exports.init(canvas.width, canvas.height);
+  document.addEventListener("keydown", (e) => {
+    console.log(e);
+    // TODO: dont use keyCode
+    exports.onKeyDown(e.keyCode, true);
+  });
+  document.addEventListener("keyup", (e) => {
+    // TODO: dont use keyCode
+    exports.onKeyDown(e.keyCode, false);
+  });
+
+  exports.init();
+
+  const animate = () => {
+    exports.tick(canvas.width, canvas.height);
+    window.requestAnimationFrame(() => animate());
+  };
+  animate();
 })();
