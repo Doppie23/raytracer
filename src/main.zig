@@ -4,10 +4,12 @@ const gl = @import("gl.zig");
 const math = @import("math.zig");
 
 const Vec3 = math.Vec3;
+const Color = Vec3(f32);
 
 const Sphere = struct {
     position: Vec3(f32),
     radius: f32,
+    texture: Texture,
 };
 
 const Camera = struct {
@@ -26,6 +28,49 @@ const Camera = struct {
     /// returns the direction vector normalized
     fn getDirection(self: Camera) Vec3(f32) {
         return self.direction.normalized();
+    }
+};
+
+const Texture = struct {
+    albedo: Vec3(f32),
+    specular: f32,
+    shininess: i32,
+    reflectivity: f32,
+    roughness: f32,
+
+    fn diffuse(color: Color) Texture {
+        return .{
+            .albedo = color,
+            .specular = 0,
+            .shininess = 1,
+            .reflectivity = 0,
+            .roughness = 0,
+        };
+    }
+
+    fn mirror(color: Color) Texture {
+        return .{
+            .albedo = color,
+            .specular = 0,
+            .shininess = 1,
+            .reflectivity = 1,
+            .roughness = 0,
+        };
+    }
+};
+
+const Light = struct {
+    position: Vec3(f32),
+    color: Color,
+    intensity: f32,
+};
+
+const Sky = struct {
+    texture: Texture,
+    color: Color,
+
+    fn init(color: Color) Sky {
+        return .{ .color = color, .texture = Texture.diffuse(color) };
     }
 };
 
@@ -62,9 +107,18 @@ const uvs = [_]f32{
     1.0, 0.0,
 };
 
+const maxRecursionDepth = 5;
+
 const spheres = [_]Sphere{
-    Sphere{ .position = Vec3(f32){ .x = 0, .y = 0.5, .z = 0 }, .radius = 1 },
+    Sphere{ .position = Vec3(f32){ .x = 0, .y = 0.5, .z = 0 }, .radius = 1, .texture = Texture.diffuse(Color.init(1, 0, 0)) },
+    Sphere{ .position = Vec3(f32){ .x = -2, .y = 0.5, .z = 1 }, .radius = 1, .texture = Texture.mirror(Color.white()) },
 };
+const lights = [_]Light{
+    Light{ .position = Vec3(f32){ .x = 0.5, .y = 2, .z = 0 }, .color = Vec3(f32).white(), .intensity = 1 },
+};
+
+const sky = Sky.init(Vec3(f32).init(0.1, 0.1, 0.1));
+const ambient_intensity = 1;
 
 var camera = Camera.init(90);
 
@@ -95,6 +149,7 @@ export fn tick(width: i32, height: i32) void {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
+    gl.uniform(i32, program, "maxRecursionDepth", maxRecursionDepth);
     gl.uniform(i32, program, "width", width);
     gl.uniform(i32, program, "heigth", height);
 
@@ -102,13 +157,39 @@ export fn tick(width: i32, height: i32) void {
     gl.uniform(Vec3(f32), program, "camera.direction", camera.getDirection());
     gl.uniform(f32, program, "camera.fov", camera.fov);
 
+    gl.uniform(bool, program, "shadeFloor", true);
+
     gl.uniform(i32, program, "sphereCount", spheres.len);
     inline for (spheres, 0..) |sphere, i| {
         gl.uniform(Vec3(f32), program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".position", sphere.position);
         gl.uniform(f32, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".radius", sphere.radius);
+
+        setTextureUniform(std.fmt.comptimePrint("sphere[{d}]", .{i}), sphere.texture);
     }
 
+    gl.uniform(i32, program, "lightCount", lights.len);
+    inline for (lights, 0..) |light, i| {
+        gl.uniform(Vec3(f32), program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".position", light.position);
+        gl.uniform(Vec3(f32), program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".color", light.color);
+        gl.uniform(f32, program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".intensity", light.intensity);
+    }
+
+    gl.uniform(Vec3(f32), program, "sky.color", sky.color);
+    setTextureUniform("sky", sky.texture);
+
+    gl.uniform(f32, program, "ambientIntensity", ambient_intensity);
+
     gl.drawArrays(vertices_count);
+}
+
+fn setTextureUniform(comptime base_name: []const u8, texture: Texture) void {
+    const name = base_name ++ ".texture";
+
+    gl.uniform(Vec3(f32), program, name ++ ".albedo", texture.albedo);
+    gl.uniform(f32, program, name ++ ".specular", texture.specular);
+    gl.uniform(i32, program, name ++ ".shininess", texture.shininess);
+    gl.uniform(f32, program, name ++ ".reflectivity", texture.reflectivity);
+    gl.uniform(f32, program, name ++ ".roughness", texture.roughness);
 }
 
 export fn onKeyDown(key_code: usize, down: bool) void {

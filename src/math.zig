@@ -4,6 +4,18 @@ pub fn Vec3(comptime T: type) type {
         y: T,
         z: T,
 
+        pub fn init(x: T, y: T, z: T) Vec3(T) {
+            return .{
+                .x = x,
+                .y = y,
+                .z = z,
+            };
+        }
+
+        pub fn white() Vec3(f32) {
+            return Vec3(f32).init(1, 1, 1);
+        }
+
         pub fn add(self: *Vec3(T), other: Vec3(T)) void {
             self.x += other.x;
             self.y += other.y;

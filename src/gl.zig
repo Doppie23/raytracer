@@ -26,6 +26,9 @@ pub fn uniform(comptime T: type, programIdx: usize, name: []const u8, value: T) 
     if (T == i32) {
         return uniform1i(programIdx, name.ptr, name.len, value);
     }
+    if (T == bool) {
+        return uniform1i(programIdx, name.ptr, name.len, if (value) 1 else 0);
+    }
 
     @compileError("Unsupported uniform type");
 }

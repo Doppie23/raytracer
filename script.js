@@ -4,7 +4,7 @@
   /** @type {HTMLCanvasElement | null} */
   const canvas = document.querySelector("#canvas");
   if (!canvas) throw new Error("No canvas");
-  const gl = canvas.getContext("webgl");
+  const gl = canvas.getContext("webgl2");
 
   if (!gl) {
     alert(
