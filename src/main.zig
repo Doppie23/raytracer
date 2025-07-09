@@ -12,6 +12,12 @@ const Sphere = struct {
     texture: Texture,
 };
 
+const Floor = struct {
+    position: Vec3(f32),
+    texture_size: f32,
+    texture: Texture,
+};
+
 const Camera = struct {
     position: Vec3(f32),
     direction: Vec3(f32),
@@ -21,7 +27,7 @@ const Camera = struct {
 
     fn init(fov: f32) Camera {
         var c = Camera{
-            .position = Vec3(f32){ .x = 0, .y = 0, .z = -2 },
+            .position = Vec3(f32){ .x = 0, .y = 0.5, .z = -2 },
             .direction = Vec3(f32){ .x = 0, .y = 0, .z = 1 },
             .yaw = 90.0,
             .pitch = 0.0,
@@ -104,6 +110,7 @@ const Texture = struct {
         var new = self;
         new.has_image = true;
         new.texture_index = index;
+        print("{d}", .{index});
         return new;
     }
 };
@@ -165,6 +172,7 @@ const spheres = [_]Sphere{
 const lights = [_]Light{
     Light{ .position = Vec3(f32){ .x = 0.5, .y = 2, .z = 0 }, .color = Vec3(f32).white(), .intensity = 1 },
 };
+var floor: Floor = undefined;
 
 const ambient_intensity = 1;
 
@@ -176,6 +184,12 @@ var sky: Sky = undefined;
 
 export fn init() void {
     sky = Sky.init(Vec3(f32).init(0.1, 0.1, 0.1), "dikhololo_night_2k.png");
+    floor = Floor{
+        .position = Vec3(f32){ .x = 0, .y = 0, .z = 0 },
+        .texture_size = 1,
+        .texture = Texture.diffuse(Color.white()).addImage("ground.png"),
+    };
+    print("{d}", .{floor.texture.texture_index});
 
     const vertex = @embedFile("vertex.glsl");
     const fragment = @embedFile("fragment.glsl");
@@ -210,6 +224,9 @@ export fn tick(width: i32, height: i32) void {
     gl.uniform(f32, program, "camera.fov", camera.fov);
 
     gl.uniform(bool, program, "shadeFloor", true);
+    gl.uniform(Vec3(f32), program, "floorPlane.position", floor.position);
+    gl.uniform(f32, program, "floorPlane.textureSize", floor.texture_size);
+    setTextureUniform("floorPlane", floor.texture);
 
     gl.uniform(i32, program, "sphereCount", spheres.len);
     inline for (spheres, 0..) |sphere, i| {
@@ -231,6 +248,10 @@ export fn tick(width: i32, height: i32) void {
 
     gl.uniform(f32, program, "ambientIntensity", ambient_intensity);
 
+    // // TODO: idk
+    // gl.uniform(i32, program, "textures[0]", 0);
+    // gl.uniform(i32, program, "textures[1]", 1);
+
     gl.drawArrays(vertices_count);
 }
 
@@ -244,6 +265,11 @@ fn setTextureUniform(comptime base_name: []const u8, texture: Texture) void {
     gl.uniform(f32, program, name ++ ".roughness", texture.roughness);
     gl.uniform(bool, program, name ++ ".hasImage", texture.has_image);
     gl.uniform(i32, program, name ++ ".textureIndex", texture.texture_index);
+
+    var buf: [32]u8 = undefined;
+    const tex_name = std.fmt.bufPrint(&buf, "textures[{d}]", .{texture.texture_index}) catch unreachable;
+
+    gl.uniform(i32, program, tex_name, texture.texture_index);
 }
 
 export fn onKeyDown(key_code: usize, down: bool) void {

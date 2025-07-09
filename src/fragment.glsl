@@ -49,6 +49,12 @@ struct Sphere {
     Texture texture;
 };
 
+struct Floor {
+    vec3 position;
+    float textureSize;
+    Texture texture;
+};
+
 struct Light {
     vec3 position;
     vec3 color;
@@ -69,6 +75,7 @@ uniform int width;
 uniform int heigth;
 uniform Camera camera;
 
+uniform Floor floorPlane;
 uniform bool shadeFloor;
 
 uniform Sphere sphere[SPHERE_SIZE];
@@ -181,6 +188,46 @@ Intersection intersectsSphere(Ray ray, Sphere sphere, int index) {
     );
 }
 
+Intersection intersectsFloor(Ray ray, Floor floorPlane) {
+    if (ray.direction.y == 0.0) {
+        return noIntersection();
+    }
+
+    float t = (floorPlane.position.y - ray.origin.y) / ray.direction.y;
+
+    if (t < 0.001)
+        return noIntersection();
+
+    return Intersection(
+        true,
+        t,
+        getPoint(ray, t),
+        1,
+        -1
+    );
+}
+
+vec2 getFloorUv(Floor floorPlane, vec3 point) {
+    float modU = mod(point.x, floorPlane.textureSize);
+    float modV = mod(point.z, floorPlane.textureSize);
+
+    if (modU < 0.0)
+        modU += floorPlane.textureSize;
+    if (modV < 0.0)
+        modV += floorPlane.textureSize;
+
+    float u = modU / floorPlane.textureSize;
+    float v = modV / floorPlane.textureSize;
+
+    return vec2(u, v);
+}
+
+vec3 getFloorNormal(Floor floorPlane, vec2 uv) {
+    // if (!floorPlane.texture.hasNormalMap)
+        return vec3(0.0, 1.0, 0.0);
+    // return getNormalVectorFromMap(floorPlane.texture.normalMapIndex, uv);
+}
+
 void updateClosestIntersection(Intersection intersection, inout Intersection closestIntersection) {
     if (intersection.hit) {
         if (
@@ -205,6 +252,13 @@ Intersection getClosestIntersection(Ray ray) {
             closestIntersection
         );
     }
+
+    // floor
+    Intersection floorIntersection = intersectsFloor(ray, floorPlane);
+    updateClosestIntersection(
+        floorIntersection,
+        closestIntersection
+    );
 
     return closestIntersection;
 }
@@ -295,11 +349,11 @@ vec3 traceRay(Ray ray, inout vec2 co) {
             texture = sphere.texture;
             uv = getSphereUv(normal);
             n = getSphereNormal(sphere, intersection.point, uv);
-        // }
-        // else if (intersection.type == 1) {
-        //     texture = floorPlane.texture;
-        //     uv = getFloorUv(floorPlane, intersection.point);
-        //     n = getFloorNormal(floorPlane, uv);
+        }
+        else if (intersection.type == 1) {
+            texture = floorPlane.texture;
+            uv = getFloorUv(floorPlane, intersection.point);
+            n = getFloorNormal(floorPlane, uv);
         // } else if (intersection.type == 2) {
         //     Plane plane = plane[intersection.index];
         //     texture = plane.texture;

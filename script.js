@@ -104,14 +104,15 @@
 
   let textureIndex = 0;
   const bindAndCreateTexture = (srcPtr, srcLen) => {
+    const currentIndex = textureIndex;
+    textureIndex++;
     const src = readString(srcPtr, srcLen);
-
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
 
     const image = new Image();
     image.src = src;
     image.addEventListener("load", () => {
+      gl.activeTexture(gl.TEXTURE0 + currentIndex);
+      const texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(
         gl.TEXTURE_2D,
@@ -124,9 +125,7 @@
       gl.generateMipmap(gl.TEXTURE_2D);
     });
 
-    const r = textureIndex;
-    textureIndex++;
-    return r;
+    return currentIndex;
   };
 
   const env = {
