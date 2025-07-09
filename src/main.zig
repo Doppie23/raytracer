@@ -92,6 +92,18 @@ const Texture = struct {
         };
     }
 
+    fn reflective(color: Color, reflectivity: f32, roughness: f32) Texture {
+        return .{
+            .albedo = color,
+            .specular = 0,
+            .shininess = 1,
+            .reflectivity = reflectivity,
+            .roughness = roughness,
+            .has_image = false,
+            .texture_index = -1,
+        };
+    }
+
     fn mirror(color: Color) Texture {
         return .{
             .albedo = color,
@@ -168,6 +180,8 @@ const maxRecursionDepth = 5;
 const spheres = [_]Sphere{
     Sphere{ .position = Vec3{ .x = 0, .y = 0.5, .z = 0 }, .radius = 1, .texture = Texture.diffuse(Color.init(1, 0, 0)) },
     Sphere{ .position = Vec3{ .x = -2, .y = 0.5, .z = 1 }, .radius = 1, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = -3, .y = 0.5, .z = -1 }, .radius = 1, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = 2, .y = 0.5, .z = 1 }, .radius = 1, .texture = Texture.reflective(Color.init(0, 1, 0), 1, 0.2) },
 };
 const lights = [_]Light{
     Light{ .position = Vec3{ .x = 0.5, .y = 2, .z = 0 }, .color = Vec3.white(), .intensity = 1 },
@@ -182,6 +196,8 @@ var program: usize = 0;
 
 var sky: Sky = undefined;
 
+var prng = std.Random.DefaultPrng.init(0);
+const rand = prng.random();
 export fn init() void {
     sky = Sky.init(Vec3.init(0.1, 0.1, 0.1), "dikhololo_night_2k.png");
     floor = Floor{
@@ -215,6 +231,7 @@ export fn tick(width: i32, height: i32) void {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
+    gl.uniform(f32, program, "seed", rand.float(f32));
     gl.uniform(i32, program, "maxRecursionDepth", maxRecursionDepth);
     gl.uniform(i32, program, "width", width);
     gl.uniform(i32, program, "heigth", height);

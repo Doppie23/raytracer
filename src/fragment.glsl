@@ -39,6 +39,7 @@ struct Intersection {
     bool hit;
     float t;
     vec3 point;
+    // TODO: use enum, or just variables
     int type; // 0 = sphere, 1 = floor, 2 = plane
     int index;
 };
@@ -69,6 +70,8 @@ struct Sky {
 in vec2 v_Uv;
 
 uniform sampler2D textures[IMAGE_SIZE];
+
+uniform float seed;
 
 uniform int maxRecursionDepth;
 uniform int width;
@@ -103,6 +106,21 @@ vec3 getTextureColor(int index, vec2 uv) {
     else if (index == 6) color = texture(textures[6], uv).rgb;
     else if (index == 7) color = texture(textures[7], uv).rgb;
     return color;
+}
+
+// https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+float rand(inout vec2 co) {
+    float res = fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+    co += vec2(1.0); // update co reference value, so it can be reused
+    return res;
+}
+
+vec3 randomDirection(inout vec2 co) {
+    float x = rand(co) * 2.0 - 1.0;
+    float y = rand(co) * 2.0 - 1.0;
+    float z = rand(co) * 2.0 - 1.0;
+
+    return vec3(x, y, z);
 }
 
 vec3 getPoint(Ray ray, float t) {
@@ -305,7 +323,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
     // keep track of all needed information for each hit
     // that we trace
     // so we can calculate the final color at the end
-    HitData hitData[MAX_MAX_RECURSION_DEPTH];
+    HitData[MAX_MAX_RECURSION_DEPTH] hitData;
     int hitObjectsLength = 0;
 
     for (int bounces = 0; bounces <= MAX_MAX_RECURSION_DEPTH; bounces++) {
@@ -349,8 +367,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
             texture = sphere.texture;
             uv = getSphereUv(normal);
             n = getSphereNormal(sphere, intersection.point, uv);
-        }
-        else if (intersection.type == 1) {
+        } else if (intersection.type == 1) {
             texture = floorPlane.texture;
             uv = getFloorUv(floorPlane, intersection.point);
             n = getFloorNormal(floorPlane, uv);
@@ -369,22 +386,6 @@ vec3 traceRay(Ray ray, inout vec2 co) {
             albedo = getTextureColor(texture.textureIndex, uv);
         } else {
             albedo = texture.albedo;
-        }
-
-        // perfect reflection, no shading needed
-        if (texture.roughness <= 0.0 && texture.reflectivity >= 1.0) {
-            hitData[hitObjectsLength++] = HitData(
-                albedo,
-                vec3(0.0),
-                texture
-            );
-
-            ray = Ray(
-                    intersection.point,
-                    reflect(ray.direction, n)
-                );
-
-            continue; // go to next bounce
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -432,30 +433,45 @@ vec3 traceRay(Ray ray, inout vec2 co) {
         }
 
         vec3 ambient = albedo * (sky.color * ambientIntensity);
-        ambient = (1.0 - texture.reflectivity) * ambient;
+        // ambient = (1.0 - texture.reflectivity) * ambient;
         finalColor += ambient;
 
-        // if (texture.reflectivity > 0.0) {
-        //     hitData[hitObjectsLength++] = HitData(
-        //         finalColor,
-        //         albedo,
-        //         texture
-        //     );
-        //
-        //     vec3 perfectReflection = reflect(v, n);
-        //     float invRoughness = 1.0 - texture.roughness;
-        //
-        //     vec3 randomDirection = normalize(n + randomDirection(co));
-        //
-        //     vec3 direction = normalize(mix(randomDirection, perfectReflection, invRoughness));
-        //
-        //     ray = Ray(
-        //         intersection.point,
-        //         direction
-        //     );
-        //
-        //     continue; // go to next bounce
-        // } else {
+        if (texture.reflectivity > 0.0) {
+            if (texture.roughness <= 0.0 && texture.reflectivity >= 1.0) {
+                // perfect reflection
+                hitData[hitObjectsLength++] = HitData(
+                    albedo,
+                    vec3(0.0),
+                    texture
+                );
+
+                ray = Ray(
+                    intersection.point,
+                    reflect(ray.direction, n)
+                );
+            } else {
+                // imperfect reflection on rough surface
+                hitData[hitObjectsLength++] = HitData(
+                    finalColor,
+                    albedo,
+                    texture
+                );
+
+                vec3 perfectReflection = reflect(v, n);
+                float invRoughness = 1.0 - texture.roughness;
+
+                vec3 randomDirection = normalize(n + randomDirection(co));
+
+                vec3 direction = normalize(mix(randomDirection, perfectReflection, invRoughness));
+
+                ray = Ray(
+                    intersection.point,
+                    direction
+                );
+            }
+
+            continue; // go to next bounce
+        } else {
             hitData[hitObjectsLength++] = HitData(
                 finalColor,
                 albedo,
@@ -466,7 +482,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
                 return finalColor;
             }
             break; // dont trace reflection further as object was not reflective
-        // }
+        }
     }
 
     if (hitObjectsLength == 0) {
@@ -495,10 +511,11 @@ vec3 traceRay(Ray ray, inout vec2 co) {
     return recursionColor;
 }
 
+
 out vec4 outputColor;
 
 void main() {
-    vec2 co = vec2(0.0, 0.0);
+    vec2 co = v_Uv * seed;
 
     Ray ray = getRayForPixel(
         camera,
@@ -507,6 +524,7 @@ void main() {
 
     vec3 color = traceRay(ray, co);
     outputColor = vec4(color, 1.0);
+    // outputColor = vec4(vec3(sphere[2].texture.roughness), 1.0);
     // outputColor = vec4(ambientIntensity, 0.0, 0.0, 1.0);
 
     // gl_FragColor = vec4(sphere[0].position, 1.0);
