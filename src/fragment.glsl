@@ -127,7 +127,7 @@ vec3 getSphereNormal(Sphere sphere, vec3 point, vec2 uv) {
 }
 
 float getDistanceToViewPlane(float planeWidth, float planeHeight) {
-    return sqrt((planeWidth * planeWidth) + (planeHeight * planeHeight)) / (2.0 * tan(radians(camera.fov) / 2.0));
+    return sqrt((planeWidth * planeWidth) + (planeHeight * planeHeight)) / (2.0 * tan(radians(camera.fov / 2.0)));
 }
 
 Ray getRayForPixel(Camera camera, vec2 uv) {
@@ -141,7 +141,7 @@ Ray getRayForPixel(Camera camera, vec2 uv) {
         planeHeight = 1.0;
     }
 
-    vec3 right = cross(vec3(0.0, 1.0, 0.0), camera.direction);
+    vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), camera.direction));
     vec3 up = cross(camera.direction, right);
 
     vec3 centerPlane = camera.position + camera.direction * getDistanceToViewPlane(planeWidth, planeHeight);
@@ -256,12 +256,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
 
     for (int bounces = 0; bounces <= MAX_MAX_RECURSION_DEPTH; bounces++) {
         if (bounces >= maxRecursionDepth) {
-            hitData[hitObjectsLength++] = HitData(
-                vec3(0.0),
-                vec3(0.0),
-                Texture(vec3(0.0), 0.0, 0, 0.0, 0.0, false, 0)
-            );
-            break;
+            return vec3(0.0);
         }
 
         Intersection intersection = getClosestIntersection(ray);
