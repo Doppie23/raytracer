@@ -85,6 +85,7 @@
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, count);
   };
 
+  // TODO: remove some duplication
   const uniform3f = (programIdx, uniformPtr, uniformLen, x, y, z) => {
     const name = readString(uniformPtr, uniformLen);
     const loc = gl.getUniformLocation(programs[programIdx], name);
@@ -101,6 +102,33 @@
     gl.uniform1i(loc, x);
   };
 
+  let textureIndex = 0;
+  const bindAndCreateTexture = (srcPtr, srcLen) => {
+    const src = readString(srcPtr, srcLen);
+
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    const image = new Image();
+    image.src = src;
+    image.addEventListener("load", () => {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        image,
+      );
+      gl.generateMipmap(gl.TEXTURE_2D);
+    });
+
+    const r = textureIndex;
+    textureIndex++;
+    return r;
+  };
+
   const env = {
     _print,
     compileShader,
@@ -111,6 +139,7 @@
     uniform3f,
     uniform1f,
     uniform1i,
+    bindAndCreateTexture,
 
     clearColor: (r, g, b, a) => gl.clearColor(r, g, b, a),
     clear: (x) => gl.clear(x),
@@ -145,6 +174,25 @@
       exports.onKeyDown(keymap[e.code], false);
     }
   });
+  canvas.addEventListener("click", async () => {
+    await canvas.requestPointerLock();
+  });
+
+  const updatePosition = (e) => {
+    exports.onMouseMove(e.movementX, e.movementY);
+  };
+
+  document.addEventListener(
+    "pointerlockchange",
+    () => {
+      if (document.pointerLockElement === canvas) {
+        document.addEventListener("mousemove", updatePosition, false);
+      } else {
+        document.removeEventListener("mousemove", updatePosition, false);
+      }
+    },
+    false,
+  );
 
   exports.init();
 

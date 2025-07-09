@@ -3,6 +3,12 @@
 #define PI 3.141592
 precision highp float;
 
+// either the hardware limit or 32
+// because we only have 32 texture units available in openGL
+#define MAX_TEXTURE_IMAGES min(gl_MaxTextureImageUnits, 32)
+
+#define IMAGE_SIZE (MAX_TEXTURE_IMAGES / 2)
+// #define UV_SIZE (MAX_TEXTURE_IMAGES / 2)
 #define SPHERE_SIZE 12
 #define PLANE_SIZE 12
 #define LIGHT_SIZE 12
@@ -25,6 +31,8 @@ struct Texture {
     int shininess;
     float reflectivity;
     float roughness;
+    bool hasImage;
+    int textureIndex;
 };
 
 struct Intersection {
@@ -54,6 +62,8 @@ struct Sky {
 
 in vec2 v_Uv;
 
+uniform sampler2D textures[IMAGE_SIZE];
+
 uniform int maxRecursionDepth;
 uniform int width;
 uniform int heigth;
@@ -72,6 +82,20 @@ uniform float ambientIntensity;
 
 Intersection noIntersection() {
     return Intersection(false, 0.0, vec3(0.0), -1, -1);
+}
+
+vec3 getTextureColor(int index, vec2 uv) {
+    vec3 color;
+    // TODO: get a version with dynamic indexing
+    if (index == 0) color = texture(textures[0], uv).rgb;
+    else if (index == 1) color = texture(textures[1], uv).rgb;
+    else if (index == 2) color = texture(textures[2], uv).rgb;
+    else if (index == 3) color = texture(textures[3], uv).rgb;
+    else if (index == 4) color = texture(textures[4], uv).rgb;
+    else if (index == 5) color = texture(textures[5], uv).rgb;
+    else if (index == 6) color = texture(textures[6], uv).rgb;
+    else if (index == 7) color = texture(textures[7], uv).rgb;
+    return color;
 }
 
 vec3 getPoint(Ray ray, float t) {
@@ -235,7 +259,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
             hitData[hitObjectsLength++] = HitData(
                 vec3(0.0),
                 vec3(0.0),
-                Texture(vec3(0.0), 0.0, 0, 0.0, 0.0)
+                Texture(vec3(0.0), 0.0, 0, 0.0, 0.0, false, 0)
             );
             break;
         }
@@ -244,14 +268,13 @@ vec3 traceRay(Ray ray, inout vec2 co) {
 
         // sky intersection
         if (!intersection.hit) {
-            // vec3 skyColor;
-            // if (sky.texture.textureIndex >= 0 && sky.texture.hasImage) {
-            //     vec2 uv = getSphereUv(-ray.direction);
-            //     skyColor = getTextureColor(sky.texture.textureIndex, uv);
-            // } else {
-            //     skyColor = sky.texture.albedo;
-            // }
-            vec3 skyColor = sky.texture.albedo;
+            vec3 skyColor;
+            if (sky.texture.textureIndex >= 0 && sky.texture.hasImage) {
+                vec2 uv = getSphereUv(-ray.direction);
+                skyColor = getTextureColor(sky.texture.textureIndex, uv);
+            } else {
+                skyColor = sky.texture.albedo;
+            }
 
             if (bounces == 0) {
                 return skyColor;
@@ -293,11 +316,11 @@ vec3 traceRay(Ray ray, inout vec2 co) {
         }
 
         vec3 albedo;
-        // if (texture.hasImage) {
-        //     albedo = getTextureColor(texture.textureIndex, uv);
-        // } else {
+        if (texture.hasImage) {
+            albedo = getTextureColor(texture.textureIndex, uv);
+        } else {
             albedo = texture.albedo;
-        // }
+        }
 
         // perfect reflection, no shading needed
         if (texture.roughness <= 0.0 && texture.reflectivity >= 1.0) {

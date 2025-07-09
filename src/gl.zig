@@ -11,6 +11,7 @@ pub extern fn createBufferAndBind(programIdx: usize, dataPtr: [*]const f32, data
 pub extern fn drawArrays(count: usize) void;
 pub extern fn clearColor(r: f32, g: f32, b: f32, a: f32) void;
 pub extern fn clear(color: usize) void;
+pub extern fn bindAndCreateTexture(srcPtr: [*]const u8, srcLen: usize) i32;
 
 extern fn uniform3f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32, y: f32, z: f32) void;
 extern fn uniform1f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32) void;

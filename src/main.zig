@@ -71,6 +71,8 @@ const Texture = struct {
     shininess: i32,
     reflectivity: f32,
     roughness: f32,
+    has_image: bool,
+    texture_index: i32,
 
     fn diffuse(color: Color) Texture {
         return .{
@@ -79,6 +81,8 @@ const Texture = struct {
             .shininess = 1,
             .reflectivity = 0,
             .roughness = 0,
+            .has_image = false,
+            .texture_index = -1,
         };
     }
 
@@ -89,7 +93,18 @@ const Texture = struct {
             .shininess = 1,
             .reflectivity = 1,
             .roughness = 0,
+            .has_image = false,
+            .texture_index = -1,
         };
+    }
+
+    fn addImage(self: Texture, image_src: []const u8) Texture {
+        const index = gl.bindAndCreateTexture(image_src.ptr, image_src.len);
+
+        var new = self;
+        new.has_image = true;
+        new.texture_index = index;
+        return new;
     }
 };
 
@@ -103,8 +118,8 @@ const Sky = struct {
     texture: Texture,
     color: Color,
 
-    fn init(color: Color) Sky {
-        return .{ .color = color, .texture = Texture.diffuse(color) };
+    fn init(color: Color, image_src: []const u8) Sky {
+        return .{ .color = color, .texture = Texture.diffuse(color).addImage(image_src) };
     }
 };
 
@@ -151,14 +166,17 @@ const lights = [_]Light{
     Light{ .position = Vec3(f32){ .x = 0.5, .y = 2, .z = 0 }, .color = Vec3(f32).white(), .intensity = 1 },
 };
 
-const sky = Sky.init(Vec3(f32).init(0.1, 0.1, 0.1));
 const ambient_intensity = 1;
 
 var camera = Camera.init(90);
 
 var program: usize = 0;
 
+var sky: Sky = undefined;
+
 export fn init() void {
+    sky = Sky.init(Vec3(f32).init(0.1, 0.1, 0.1), "dikhololo_night_2k.png");
+
     const vertex = @embedFile("vertex.glsl");
     const fragment = @embedFile("fragment.glsl");
 
@@ -224,6 +242,8 @@ fn setTextureUniform(comptime base_name: []const u8, texture: Texture) void {
     gl.uniform(i32, program, name ++ ".shininess", texture.shininess);
     gl.uniform(f32, program, name ++ ".reflectivity", texture.reflectivity);
     gl.uniform(f32, program, name ++ ".roughness", texture.roughness);
+    gl.uniform(bool, program, name ++ ".hasImage", texture.has_image);
+    gl.uniform(i32, program, name ++ ".textureIndex", texture.texture_index);
 }
 
 export fn onKeyDown(key_code: usize, down: bool) void {
