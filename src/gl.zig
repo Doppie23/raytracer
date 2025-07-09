@@ -18,7 +18,7 @@ extern fn uniform1f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usiz
 extern fn uniform1i(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: i32) void;
 
 pub fn uniform(comptime T: type, programIdx: usize, name: []const u8, value: T) void {
-    if (T == Vec3(f32)) {
+    if (T == Vec3) {
         return uniform3f(programIdx, name.ptr, name.len, value.x, value.y, value.z);
     }
     if (T == f32) {
