@@ -160,21 +160,6 @@ var keyState: KeyState = .{
     .down = false,
 };
 
-const vertices_count = 4;
-const vertices = [_]f32{
-    -1.0, -1.0, 0.0,
-    1.0,  -1.0, 0.0,
-    -1.0, 1.0,  0.0,
-    1.0,  1.0,  0.0,
-};
-
-const uvs = [_]f32{
-    0.0, 1.0,
-    1.0, 1.0,
-    0.0, 0.0,
-    1.0, 0.0,
-};
-
 const maxRecursionDepth = 5;
 
 const spheres = [_]Sphere{
@@ -216,12 +201,6 @@ export fn init() void {
 
     program = gl.createProgram(vertex_idx, fragment_idx);
     gl.useProgram(program);
-
-    const pos = "a_Position";
-    gl.createBufferAndBind(program, &vertices, vertices.len, vertices.len / vertices_count, pos.ptr, pos.len);
-
-    const uv = "a_Uv";
-    gl.createBufferAndBind(program, &uvs, uvs.len, uvs.len / vertices_count, uv.ptr, uv.len);
 }
 
 export fn tick(width: i32, height: i32) void {
@@ -265,11 +244,7 @@ export fn tick(width: i32, height: i32) void {
 
     gl.uniform(f32, program, "ambientIntensity", ambient_intensity);
 
-    // // TODO: idk
-    // gl.uniform(i32, program, "textures[0]", 0);
-    // gl.uniform(i32, program, "textures[1]", 1);
-
-    gl.drawArrays(vertices_count);
+    gl.drawArrays(3);
 }
 
 fn setTextureUniform(comptime base_name: []const u8, texture: Texture) void {
