@@ -5,7 +5,7 @@ precision highp float;
 
 // either the hardware limit or 32
 // because we only have 32 texture units available in openGL
-#define MAX_TEXTURE_IMAGES min(gl_MaxTextureImageUnits, 32)
+#define MAX_TEXTURE_IMAGES (min(gl_MaxTextureImageUnits, 32) - 2) // minus 2 as we need to use two as render targets
 
 #define IMAGE_SIZE (MAX_TEXTURE_IMAGES / 2)
 // #define UV_SIZE (MAX_TEXTURE_IMAGES / 2)
@@ -69,6 +69,9 @@ struct Sky {
 
 in vec2 v_Uv;
 
+uniform sampler2D previousFrame;
+uniform int numOfSamples;
+
 uniform sampler2D textures[IMAGE_SIZE];
 
 uniform float seed;
@@ -103,8 +106,8 @@ vec3 getTextureColor(int index, vec2 uv) {
     else if (index == 3) color = texture(textures[3], uv).rgb;
     else if (index == 4) color = texture(textures[4], uv).rgb;
     else if (index == 5) color = texture(textures[5], uv).rgb;
-    else if (index == 6) color = texture(textures[6], uv).rgb;
-    else if (index == 7) color = texture(textures[7], uv).rgb;
+    // else if (index == 6) color = texture(textures[6], uv).rgb;
+    // else if (index == 7) color = texture(textures[7], uv).rgb;
     return color;
 }
 
@@ -524,8 +527,17 @@ void main() {
 
     vec3 color = traceRay(ray, co);
     outputColor = vec4(color, 1.0);
+
+    if (numOfSamples > 0) {
+        vec4 previousColor = texture(previousFrame, vec2(v_Uv.x, 1.0 - v_Uv.y));
+        float f_numOfSamples = float(numOfSamples);
+        outputColor = (previousColor * f_numOfSamples + outputColor) / (f_numOfSamples + 1.0);
+    }
+
+
     // outputColor = vec4(vec3(sphere[2].texture.roughness), 1.0);
     // outputColor = vec4(ambientIntensity, 0.0, 0.0, 1.0);
+    // outputColor = vec4(1.0, 0.0, 0.0, 1.0);
 
     // gl_FragColor = vec4(sphere[0].position, 1.0);
     // gl_FragColor = vec4(ray.direction, 1.0);

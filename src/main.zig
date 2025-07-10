@@ -78,7 +78,7 @@ const Texture = struct {
     reflectivity: f32,
     roughness: f32,
     has_image: bool,
-    texture_index: i32,
+    texture_unit: i32,
 
     fn diffuse(color: Color) Texture {
         return .{
@@ -88,7 +88,7 @@ const Texture = struct {
             .reflectivity = 0,
             .roughness = 0,
             .has_image = false,
-            .texture_index = -1,
+            .texture_unit = -1,
         };
     }
 
@@ -100,7 +100,7 @@ const Texture = struct {
             .reflectivity = reflectivity,
             .roughness = roughness,
             .has_image = false,
-            .texture_index = -1,
+            .texture_unit = -1,
         };
     }
 
@@ -112,7 +112,7 @@ const Texture = struct {
             .reflectivity = 1,
             .roughness = 0,
             .has_image = false,
-            .texture_index = -1,
+            .texture_unit = -1,
         };
     }
 
@@ -121,8 +121,7 @@ const Texture = struct {
 
         var new = self;
         new.has_image = true;
-        new.texture_index = index;
-        print("{d}", .{index});
+        new.texture_unit = index;
         return new;
     }
 };
@@ -190,7 +189,6 @@ export fn init() void {
         .texture_size = 1,
         .texture = Texture.diffuse(Color.white()).addImage("ground.png"),
     };
-    print("{d}", .{floor.texture.texture_index});
 
     const vertex = @embedFile("vertex.glsl");
     const fragment = @embedFile("fragment.glsl");
@@ -200,16 +198,28 @@ export fn init() void {
     const fragment_idx = gl.compileShader(fragment.ptr, fragment.len, gl.FRAGMENT_SHADER);
 
     program = gl.createProgram(vertex_idx, fragment_idx);
-    gl.useProgram(program);
 }
 
-export fn tick(width: i32, height: i32) void {
-    handleKeyState();
+var num_of_samples: i32 = 0;
+export fn tick(width: i32, height: i32, previous_frame: i32) void {
+    const changed = handleKeyState();
+    if (changed) {
+        num_of_samples = 0;
+    }
+
+    gl.useProgram(program);
+
+    var t_idx: usize = 0;
+    const texture_index: *usize = &t_idx;
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
+    gl.uniform(i32, program, "previousFrame", previous_frame);
+    gl.uniform(i32, program, "numOfSamples", num_of_samples);
+    num_of_samples += 1;
+
     gl.uniform(f32, program, "seed", rand.float(f32));
     gl.uniform(i32, program, "maxRecursionDepth", maxRecursionDepth);
     gl.uniform(i32, program, "width", width);
@@ -222,14 +232,14 @@ export fn tick(width: i32, height: i32) void {
     gl.uniform(bool, program, "shadeFloor", true);
     gl.uniform(Vec3, program, "floorPlane.position", floor.position);
     gl.uniform(f32, program, "floorPlane.textureSize", floor.texture_size);
-    setTextureUniform("floorPlane", floor.texture);
+    setTextureUniform("floorPlane", floor.texture, texture_index);
 
     gl.uniform(i32, program, "sphereCount", spheres.len);
     inline for (spheres, 0..) |sphere, i| {
         gl.uniform(Vec3, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".position", sphere.position);
         gl.uniform(f32, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".radius", sphere.radius);
 
-        setTextureUniform(std.fmt.comptimePrint("sphere[{d}]", .{i}), sphere.texture);
+        setTextureUniform(std.fmt.comptimePrint("sphere[{d}]", .{i}), sphere.texture, texture_index);
     }
 
     gl.uniform(i32, program, "lightCount", lights.len);
@@ -240,14 +250,14 @@ export fn tick(width: i32, height: i32) void {
     }
 
     gl.uniform(Vec3, program, "sky.color", sky.color);
-    setTextureUniform("sky", sky.texture);
+    setTextureUniform("sky", sky.texture, texture_index);
 
     gl.uniform(f32, program, "ambientIntensity", ambient_intensity);
 
     gl.drawArrays(3);
 }
 
-fn setTextureUniform(comptime base_name: []const u8, texture: Texture) void {
+fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_index: *usize) void {
     const name = base_name ++ ".texture";
 
     gl.uniform(Vec3, program, name ++ ".albedo", texture.albedo);
@@ -256,12 +266,15 @@ fn setTextureUniform(comptime base_name: []const u8, texture: Texture) void {
     gl.uniform(f32, program, name ++ ".reflectivity", texture.reflectivity);
     gl.uniform(f32, program, name ++ ".roughness", texture.roughness);
     gl.uniform(bool, program, name ++ ".hasImage", texture.has_image);
-    gl.uniform(i32, program, name ++ ".textureIndex", texture.texture_index);
+    gl.uniform(i32, program, name ++ ".textureIndex", @intCast(texture_index.*));
 
-    var buf: [32]u8 = undefined;
-    const tex_name = std.fmt.bufPrint(&buf, "textures[{d}]", .{texture.texture_index}) catch unreachable;
+    if (texture.has_image) {
+        var buf: [32]u8 = undefined;
+        const tex_name = std.fmt.bufPrint(&buf, "textures[{d}]", .{texture_index.*}) catch unreachable;
+        texture_index.* += 1;
 
-    gl.uniform(i32, program, tex_name, texture.texture_index);
+        gl.uniform(i32, program, tex_name, texture.texture_unit);
+    }
 }
 
 export fn onKeyDown(key_code: usize, down: bool) void {
@@ -281,29 +294,39 @@ export fn onMouseMove(delta_x: f32, delta_y: f32) void {
     const sens = 0.1;
     camera.addYaw(-delta_x * sens);
     camera.addPitch(-delta_y * sens);
+    num_of_samples = 0;
 }
 
-fn handleKeyState() void {
+fn handleKeyState() bool {
     const speed = 0.05;
+
+    var changes = false;
 
     const f = camera.forward();
     const l = camera.left();
     if (keyState.forwards) {
         camera.position.add(f.mult(speed));
+        changes = true;
     }
     if (keyState.backwards) {
         camera.position.add(f.mult(-speed));
+        changes = true;
     }
     if (keyState.right) {
         camera.position.add(l.mult(-speed));
+        changes = true;
     }
     if (keyState.left) {
         camera.position.add(l.mult(speed));
+        changes = true;
     }
     if (keyState.up) {
         camera.position.add(.{ .x = 0, .y = speed, .z = 0 });
+        changes = true;
     }
     if (keyState.down) {
         camera.position.add(.{ .x = 0, .y = -speed, .z = 0 });
+        changes = true;
     }
+    return changes;
 }
