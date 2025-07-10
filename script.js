@@ -129,6 +129,10 @@
   };
 
   // === FRAMEBUFFER SETUP ===
+  // let framebufferOne = null;
+  // let framebufferTextureOne = null;
+  // let framebufferTwo = null;
+  // let framebufferTextureTwo = null;
   let postProcessProgram = null;
 
   const createFramebuffer = (width, height) => {
@@ -214,7 +218,7 @@
       fragColor = texture(u_texture, v_texCoord);
 
       // Example: Add a slight color tint
-      fragColor.rgb *= vec3(1.1, 1.0, 0.9);
+      // fragColor.rgb *= vec3(1.1, 1.0, 0.9);
     }`;
 
     // Create shaders

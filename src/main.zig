@@ -162,10 +162,10 @@ var keyState: KeyState = .{
 const maxRecursionDepth = 5;
 
 const spheres = [_]Sphere{
-    Sphere{ .position = Vec3{ .x = 0, .y = 0.5, .z = 0 }, .radius = 1, .texture = Texture.diffuse(Color.init(1, 0, 0)) },
-    Sphere{ .position = Vec3{ .x = -2, .y = 0.5, .z = 1 }, .radius = 1, .texture = Texture.mirror(Color.white()) },
-    Sphere{ .position = Vec3{ .x = -3, .y = 0.5, .z = -1 }, .radius = 1, .texture = Texture.mirror(Color.white()) },
-    Sphere{ .position = Vec3{ .x = 2, .y = 0.5, .z = 1 }, .radius = 1, .texture = Texture.reflective(Color.init(0, 1, 0), 1, 0.2) },
+    Sphere{ .position = Vec3{ .x = 0, .y = 0.5, .z = 0 }, .radius = 0.5, .texture = Texture.diffuse(Color.init(1, 0, 0)) },
+    Sphere{ .position = Vec3{ .x = -2, .y = 0.5, .z = 1 }, .radius = 0.5, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = -3, .y = 0.5, .z = -1 }, .radius = 0.5, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = 2, .y = 0.5, .z = 1 }, .radius = 0.5, .texture = Texture.reflective(Color.init(0, 1, 0), 1, 0.2) },
 };
 const lights = [_]Light{
     Light{ .position = Vec3{ .x = 0.5, .y = 2, .z = 0 }, .color = Vec3.white(), .intensity = 1 },
@@ -187,7 +187,7 @@ export fn init() void {
     floor = Floor{
         .position = Vec3{ .x = 0, .y = 0, .z = 0 },
         .texture_size = 1,
-        .texture = Texture.diffuse(Color.white()).addImage("ground.png"),
+        .texture = Texture.reflective(Color.white(), 1, 0.5).addImage("ground.png"),
     };
 
     const vertex = @embedFile("vertex.glsl");
@@ -326,6 +326,9 @@ fn handleKeyState() bool {
     }
     if (keyState.down) {
         camera.position.add(.{ .x = 0, .y = -speed, .z = 0 });
+        if (camera.position.y < 0) {
+            camera.position.y = 0;
+        }
         changes = true;
     }
     return changes;
