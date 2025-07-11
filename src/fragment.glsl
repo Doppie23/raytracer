@@ -320,14 +320,8 @@ struct HitData {
     Texture texture;
 };
 
-// recursion is not a thing in glsl
-// which makes this function kinda messy
 vec3 traceRay(Ray ray, inout vec2 co) {
-    // keep track of all needed information for each hit
-    // that we trace
-    // so we can calculate the final color at the end
-    HitData[MAX_MAX_RECURSION_DEPTH] hitData;
-    int hitObjectsLength = 0;
+    vec3 color = vec3(1.0);
 
     for (int bounces = 0; bounces <= MAX_MAX_RECURSION_DEPTH; bounces++) {
         if (bounces >= maxRecursionDepth) {
@@ -349,11 +343,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
             if (bounces == 0) {
                 return skyColor;
             } else {
-                hitData[hitObjectsLength++] = HitData(
-                    skyColor,
-                    sky.texture.albedo,
-                    sky.texture
-                );
+                color *= skyColor;
                 break;
             }
         }
@@ -436,17 +426,12 @@ vec3 traceRay(Ray ray, inout vec2 co) {
         }
 
         vec3 ambient = albedo * (sky.color * ambientIntensity);
-        // ambient = (1.0 - texture.reflectivity) * ambient;
+        ambient = (1.0 - texture.reflectivity) * ambient;
         finalColor += ambient;
 
         if (texture.reflectivity > 0.0) {
             if (texture.roughness <= 0.0 && texture.reflectivity >= 1.0) {
-                // perfect reflection
-                hitData[hitObjectsLength++] = HitData(
-                    albedo,
-                    vec3(0.0),
-                    texture
-                );
+                color *= albedo;
 
                 ray = Ray(
                     intersection.point,
@@ -454,11 +439,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
                 );
             } else {
                 // imperfect reflection on rough surface
-                hitData[hitObjectsLength++] = HitData(
-                    finalColor,
-                    albedo,
-                    texture
-                );
+                color *= albedo * texture.reflectivity + finalColor;
 
                 vec3 perfectReflection = reflect(v, n);
                 float invRoughness = 1.0 - texture.roughness;
@@ -475,43 +456,12 @@ vec3 traceRay(Ray ray, inout vec2 co) {
 
             continue; // go to next bounce
         } else {
-            hitData[hitObjectsLength++] = HitData(
-                finalColor,
-                albedo,
-                texture
-            );
-
-            if (bounces == 0) {
-                return finalColor;
-            }
+            color *= finalColor;
             break; // dont trace reflection further as object was not reflective
         }
     }
 
-    if (hitObjectsLength == 0) {
-        return vec3(0.0);
-    } else if (hitObjectsLength == 1) {
-        return hitData[0].finalColor;
-    }
-
-    // last object we hit should be a normal diffuse color without reflectivity
-    vec3 recursionColor =
-        hitData[hitObjectsLength - 1].finalColor;
-
-    // backtrace all the intersections
-    for (int i = hitObjectsLength - 2; i >= 0; i--) {
-        Texture texture = hitData[i].texture;
-
-        if (texture.reflectivity >= 1.0 && texture.roughness <= 0.0) {
-            recursionColor *= hitData[i].finalColor;
-        } else {
-            recursionColor =
-                hitData[i].finalColor
-                + (hitData[i].albedo * texture.reflectivity * recursionColor);
-        }
-    }
-
-    return recursionColor;
+    return color;
 }
 
 
