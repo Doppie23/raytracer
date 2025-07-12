@@ -4,17 +4,29 @@ pub const COLOR_BUFFER_BIT = 16384;
 pub const VERTEX_SHADER = 35633;
 pub const FRAGMENT_SHADER = 35632;
 
-pub const TEXTURE0 = 33984;
-pub const TEXTURE1 = 33985;
+pub const TEXTURE0: TextureUnit = .{ .num = 33984 };
+pub const TEXTURE1: TextureUnit = .{ .num = 33985 };
+pub const TEXTURE2: TextureUnit = .{ .num = 33986 };
+
+pub const TextureUnit = struct {
+    /// the number associated with the texture unit
+    /// TEXTURE0 = 33984
+    num: usize,
+
+    /// the index of the texture unit, used when passing it to a texture2D in a shader
+    /// TEXTURE0 = 0
+    pub fn toIndex(self: TextureUnit) usize {
+        return self.num - TEXTURE0.num;
+    }
+};
 
 pub extern fn compileShader(ptr: [*]const u8, len: usize, shaderType: usize) usize;
 pub extern fn createProgram(vertexShaderIdx: usize, fragmentShaderIdx: usize) usize;
 pub extern fn useProgram(programIdx: usize) void;
-pub extern fn createBufferAndBind(programIdx: usize, dataPtr: [*]const f32, dataLen: usize, dataSize: usize, attPtr: [*]const u8, attLen: usize) void;
 pub extern fn drawArrays(count: usize) void;
 pub extern fn clearColor(r: f32, g: f32, b: f32, a: f32) void;
 pub extern fn clear(color: usize) void;
-pub extern fn bindAndCreateTexture(srcPtr: [*]const u8, srcLen: usize) usize;
+pub extern fn bindAndCreateTexture(srcPtr: [*]const u8, srcLen: usize, textureUnit: usize) void;
 pub extern fn createFramebuffer() usize;
 pub extern fn bindFramebuffer(framebufferIdx: usize) void;
 pub extern fn activeTexture(textureUnit: usize) void;

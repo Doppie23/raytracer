@@ -6,7 +6,7 @@ active: Fbo,
 other: Fbo,
 program: usize,
 
-pub fn init(width: usize, height: usize, texture_unit_one: usize, texture_unit_two: usize) Self {
+pub fn init(width: usize, height: usize, texture_unit_one: gl.TextureUnit, texture_unit_two: gl.TextureUnit) Self {
     const active = createFbo(width, height, texture_unit_one);
     const other = createFbo(width, height, texture_unit_two);
     const program = createPostProcessShader();
@@ -21,7 +21,7 @@ pub fn init(width: usize, height: usize, texture_unit_one: usize, texture_unit_t
 pub fn bind(self: Self) void {
     gl.bindFramebuffer(self.active.framebuffer);
 
-    gl.activeTexture(self.active.texture_unit);
+    gl.activeTexture(self.active.texture_unit.num);
     gl.bindNullTexture();
 }
 
@@ -29,9 +29,9 @@ pub fn draw_active_to_screen(self: Self) void {
     gl.bindNullFramebuffer();
     gl.useProgram(self.program);
 
-    gl.activeTexture(self.active.texture_unit);
+    gl.activeTexture(self.active.texture_unit.num);
     gl.bindTexture(self.active.texture);
-    gl.uniform(usize, self.program, "u_texture", self.active.texture_unit - gl.TEXTURE0);
+    gl.uniform(usize, self.program, "u_texture", self.active.texture_unit.toIndex());
 
     gl.drawArrays(3);
 }
@@ -45,10 +45,10 @@ pub fn swap(self: *Self) void {
 const Fbo = struct {
     framebuffer: usize,
     texture: usize,
-    texture_unit: usize,
+    texture_unit: gl.TextureUnit,
 };
 
-fn createFbo(width: usize, height: usize, texture_unit: usize) Fbo {
+fn createFbo(width: usize, height: usize, texture_unit: gl.TextureUnit) Fbo {
     const framebuffer = gl.createFramebuffer();
     gl.bindFramebuffer(framebuffer);
     const texture = gl.createFramebufferTexture(width, height);

@@ -3,6 +3,7 @@ const print = @import("utils.zig").print;
 const gl = @import("gl.zig");
 const math = @import("math.zig");
 const PingPongBuffer = @import("PingPongBuffer.zig");
+const ResourceManager = @import("ResourceManager.zig");
 
 const Vec3 = math.Vec3;
 const Color = Vec3;
@@ -79,7 +80,7 @@ const Texture = struct {
     reflectivity: f32,
     roughness: f32,
     has_image: bool,
-    texture_unit: i32,
+    texture_unit: ?gl.TextureUnit,
 
     fn diffuse(color: Color) Texture {
         return .{
@@ -89,7 +90,7 @@ const Texture = struct {
             .reflectivity = 0,
             .roughness = 0,
             .has_image = false,
-            .texture_unit = -1,
+            .texture_unit = null,
         };
     }
 
@@ -101,7 +102,7 @@ const Texture = struct {
             .reflectivity = reflectivity,
             .roughness = roughness,
             .has_image = false,
-            .texture_unit = -1,
+            .texture_unit = null,
         };
     }
 
@@ -113,16 +114,14 @@ const Texture = struct {
             .reflectivity = 1,
             .roughness = 0,
             .has_image = false,
-            .texture_unit = -1,
+            .texture_unit = null,
         };
     }
 
-    fn addImage(self: Texture, image_src: []const u8) Texture {
-        const index = gl.bindAndCreateTexture(image_src.ptr, image_src.len);
-
+    fn addImage(self: Texture, texture_unit: gl.TextureUnit) Texture {
         var new = self;
         new.has_image = true;
-        new.texture_unit = @intCast(index);
+        new.texture_unit = texture_unit;
         return new;
     }
 };
@@ -137,8 +136,8 @@ const Sky = struct {
     texture: Texture,
     color: Color,
 
-    fn init(color: Color, image_src: []const u8) Sky {
-        return .{ .color = color, .texture = Texture.diffuse(color).addImage(image_src) };
+    fn init(color: Color, texture_unit: gl.TextureUnit) Sky {
+        return .{ .color = color, .texture = Texture.diffuse(color).addImage(texture_unit) };
     }
 };
 
@@ -185,15 +184,20 @@ var prng = std.Random.DefaultPrng.init(0);
 const rand = prng.random();
 
 var ping_pong_buffer: PingPongBuffer = undefined;
+var resource_manager: ResourceManager = undefined;
 
 export fn init(width: usize, height: usize) void {
     ping_pong_buffer = .init(width, height, gl.TEXTURE0, gl.TEXTURE1);
+    resource_manager = .init(gl.TEXTURE2);
 
-    sky = Sky.init(Vec3.init(0.1, 0.1, 0.1), "dikhololo_night_2k.png");
+    const sky_img = resource_manager.create_texture("dikhololo_night_2k.png");
+    const ground_img = resource_manager.create_texture("ground.png");
+
+    sky = Sky.init(Vec3.init(0.1, 0.1, 0.1), sky_img);
     floor = Floor{
         .position = Vec3{ .x = 0, .y = 0, .z = 0 },
         .texture_size = 1,
-        .texture = Texture.reflective(Color.white(), 1, 0.5).addImage("ground.png"),
+        .texture = Texture.reflective(Color.white(), 1, 0.5).addImage(ground_img),
     };
 
     const vertex = @embedFile("vertex.glsl");
@@ -225,7 +229,7 @@ export fn tick(width: usize, height: usize) void {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
-    gl.uniform(usize, program, "previousFrame", ping_pong_buffer.other.texture_unit - gl.TEXTURE0);
+    gl.uniform(usize, program, "previousFrame", ping_pong_buffer.other.texture_unit.toIndex());
     gl.uniform(usize, program, "numOfSamples", num_of_samples);
     num_of_samples += 1;
 
@@ -287,7 +291,7 @@ fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_i
         const tex_name = std.fmt.bufPrint(&buf, "textures[{d}]", .{texture_index.*}) catch unreachable;
         texture_index.* += 1;
 
-        gl.uniform(i32, program, tex_name, texture.texture_unit);
+        gl.uniform(usize, program, tex_name, texture.texture_unit.?.toIndex());
     }
 }
 

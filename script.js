@@ -62,56 +62,30 @@
     gl.useProgram(programs[programIdx]);
   };
 
-  const createBufferAndBind = (
-    programIdx,
-    dataPtr,
-    dataLen,
-    dataSize,
-    attPtr,
-    attLen,
-  ) => {
-    const data = new Float32Array(exports.memory.buffer, dataPtr, dataLen);
-    const attName = readString(attPtr, attLen);
-
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-    const att = gl.getAttribLocation(programs[programIdx], attName);
-    gl.vertexAttribPointer(att, dataSize, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(att);
-  };
-
   const drawArrays = (count) => {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, count);
   };
 
-  // TODO: remove some duplication
-  const uniform3f = (programIdx, uniformPtr, uniformLen, x, y, z) => {
-    const name = readString(uniformPtr, uniformLen);
-    const loc = gl.getUniformLocation(programs[programIdx], name);
+  const uniform3f = (p, uPtr, uLen, x, y, z) => {
+    const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
     gl.uniform3f(loc, x, y, z);
   };
-  const uniform1f = (programIdx, uniformPtr, uniformLen, x) => {
-    const name = readString(uniformPtr, uniformLen);
-    const loc = gl.getUniformLocation(programs[programIdx], name);
+  const uniform1f = (p, uPtr, uLen, x, y, z) => {
+    const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
     gl.uniform1f(loc, x);
   };
-  const uniform1i = (programIdx, uniformPtr, uniformLen, x) => {
-    const name = readString(uniformPtr, uniformLen);
-    const loc = gl.getUniformLocation(programs[programIdx], name);
+  const uniform1i = (p, uPtr, uLen, x, y, z) => {
+    const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
     gl.uniform1i(loc, x);
   };
 
-  let textureIndex = 2; // start from 2 as 0 and 1 are used for the framebuffer
-  const bindAndCreateTexture = (srcPtr, srcLen) => {
-    const currentIndex = textureIndex;
-    textureIndex++;
+  const bindAndCreateTexture = (srcPtr, srcLen, textureUnit) => {
     const src = readString(srcPtr, srcLen);
 
     const image = new Image();
     image.src = src;
     image.addEventListener("load", () => {
-      gl.activeTexture(gl.TEXTURE0 + currentIndex);
+      gl.activeTexture(textureUnit);
       const texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(
@@ -124,8 +98,6 @@
       );
       gl.generateMipmap(gl.TEXTURE_2D);
     });
-
-    return currentIndex;
   };
 
   const framebuffers = [];
@@ -202,7 +174,6 @@
     compileShader,
     createProgram,
     useProgram,
-    createBufferAndBind,
     drawArrays,
     uniform3f,
     uniform1f,
