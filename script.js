@@ -128,20 +128,39 @@
     return currentIndex;
   };
 
-  // === FRAMEBUFFER SETUP ===
-  // let framebufferOne = null;
-  // let framebufferTextureOne = null;
-  // let framebufferTwo = null;
-  // let framebufferTextureTwo = null;
-  let postProcessProgram = null;
-
-  const createFramebuffer = (width, height) => {
-    // Create framebuffer
+  const framebuffers = [];
+  const createFramebuffer = () => {
     const framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    framebuffers.push(framebuffer);
+    return framebuffers.length - 1;
+  };
 
-    // Create texture for framebuffer
+  const bindFramebuffer = (framebufferIdx) => {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[framebufferIdx]);
+  };
+
+  const activeTexture = (textureUnit) => {
+    gl.activeTexture(textureUnit);
+  };
+
+  const textures = [];
+  const createTexture = () => {
+    const tex = gl.createTexture();
+    textures.push(tex);
+    return textures.length - 1;
+  };
+  const bindTexture = (textureIdx) => {
+    gl.bindTexture(gl.TEXTURE_2D, textures[textureIdx]);
+  };
+
+  const bindNullTexture = () => {
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  };
+
+  const createFramebufferTexture = (width, height) => {
     const framebufferTexture = gl.createTexture();
+    textures.push(framebufferTexture);
+
     gl.bindTexture(gl.TEXTURE_2D, framebufferTexture);
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -159,7 +178,6 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    // Attach texture to framebuffer
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT0,
@@ -168,94 +186,15 @@
       0,
     );
 
-    // Create depth buffer (optional, if your raytracer needs it)
-    const depthBuffer = gl.createRenderbuffer();
-    gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
-    gl.renderbufferStorage(
-      gl.RENDERBUFFER,
-      gl.DEPTH_COMPONENT16,
-      width,
-      height,
-    );
-    gl.framebufferRenderbuffer(
-      gl.FRAMEBUFFER,
-      gl.DEPTH_ATTACHMENT,
-      gl.RENDERBUFFER,
-      depthBuffer,
-    );
-
-    // Check framebuffer completeness
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
       throw new Error("Framebuffer is not complete");
     }
 
-    // Unbind framebuffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    return { framebuffer, framebufferTexture };
+    return textures.length - 1;
   };
 
-  const createPostProcessShaders = () => {
-    // Simple vertex shader for fullscreen quad
-    const vertexShaderSource = `#version 300 es
-    out vec2 v_texCoord;
-    void main() {
-      vec2 pos = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
-      v_texCoord = vec2(pos.x, pos.y);
-      gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
-    }`;
-
-    // Fragment shader for post-processing (you can modify this for effects)
-    const fragmentShaderSource = `#version 300 es
-    precision mediump float;
-
-    in vec2 v_texCoord;
-    uniform sampler2D u_texture;
-    out vec4 fragColor;
-
-    void main() {
-      // Simple pass-through (you can add effects here)
-      fragColor = texture(u_texture, v_texCoord);
-
-      // Example: Add a slight color tint
-      // fragColor.rgb *= vec3(1.1, 1.0, 0.9);
-    }`;
-
-    // Create shaders
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, vertexShaderSource);
-    gl.compileShader(vertexShader);
-
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, fragmentShaderSource);
-    gl.compileShader(fragmentShader);
-
-    // Create program
-    postProcessProgram = gl.createProgram();
-    gl.attachShader(postProcessProgram, vertexShader);
-    gl.attachShader(postProcessProgram, fragmentShader);
-    gl.linkProgram(postProcessProgram);
-
-    if (!gl.getProgramParameter(postProcessProgram, gl.LINK_STATUS)) {
-      throw new Error("Post-process program failed to link");
-    }
-  };
-
-  const renderPostProcess = (framebufferTexture, textureUnit) => {
-    // Bind default framebuffer (canvas)
+  const bindNullFramebuffer = () => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-
-    // Use post-process program
-    gl.useProgram(postProcessProgram);
-
-    // Bind framebuffer texture
-    gl.activeTexture(textureUnit);
-    gl.bindTexture(gl.TEXTURE_2D, framebufferTexture);
-    gl.uniform1i(gl.getUniformLocation(postProcessProgram, "u_texture"), 0);
-
-    // Draw fullscreen quad
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 3);
   };
 
   const env = {
@@ -269,6 +208,14 @@
     uniform1f,
     uniform1i,
     bindAndCreateTexture,
+    createFramebuffer,
+    bindFramebuffer,
+    activeTexture,
+    createTexture,
+    bindTexture,
+    bindNullTexture,
+    createFramebufferTexture,
+    bindNullFramebuffer,
 
     clearColor: (r, g, b, a) => gl.clearColor(r, g, b, a),
     clear: (x) => gl.clear(x),
@@ -280,19 +227,6 @@
   const results = await WebAssembly.instantiate(bytes, { env });
   const instance = results.instance;
   exports = instance.exports;
-
-  // Initialize framebuffer and post-processing
-  let framebufferTextureUnitActive = gl.TEXTURE0;
-  let framebufferTextureUnitOther = gl.TEXTURE1;
-  let {
-    framebuffer: framebufferActive,
-    framebufferTexture: framebufferTextureActive,
-  } = createFramebuffer(canvas.width, canvas.height);
-  let {
-    framebuffer: framebufferOther,
-    framebufferTexture: framebufferTextureOther,
-  } = createFramebuffer(canvas.width, canvas.height);
-  createPostProcessShaders();
 
   const keymap = {
     KeyW: 0,
@@ -336,44 +270,10 @@
     false,
   );
 
-  exports.init();
+  exports.init(canvas.width, canvas.height);
 
   const animate = () => {
-    // Render to framebuffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebufferActive);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-
-    gl.activeTexture(framebufferTextureUnitActive);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-
-    // Your raytracer renders here
-    const previousFrame = framebufferTextureUnitOther - gl.TEXTURE0;
-    exports.tick(canvas.width, canvas.height, previousFrame);
-
-    // Render post-process pass to canvas
-    renderPostProcess(framebufferTextureActive, framebufferTextureUnitActive);
-
-    [framebufferActive, framebufferOther] = [
-      framebufferOther,
-      framebufferActive,
-    ];
-    [framebufferTextureActive, framebufferTextureOther] = [
-      framebufferTextureOther,
-      framebufferTextureActive,
-    ];
-    [framebufferTextureUnitActive, framebufferTextureUnitOther] = [
-      framebufferTextureUnitOther,
-      framebufferTextureUnitActive,
-    ];
-    //
-    //   framebufferTextureActive,
-    //   framebufferTextureUnitActive,
-    // ] = [
-    //   framebufferOther,
-    //   framebufferTextureOther,
-    //   framebufferTextureUnitOther,
-    // ];
-
+    exports.tick(canvas.width, canvas.height);
     window.requestAnimationFrame(() => animate());
   };
   animate();

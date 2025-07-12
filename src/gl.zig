@@ -4,6 +4,9 @@ pub const COLOR_BUFFER_BIT = 16384;
 pub const VERTEX_SHADER = 35633;
 pub const FRAGMENT_SHADER = 35632;
 
+pub const TEXTURE0 = 33984;
+pub const TEXTURE1 = 33985;
+
 pub extern fn compileShader(ptr: [*]const u8, len: usize, shaderType: usize) usize;
 pub extern fn createProgram(vertexShaderIdx: usize, fragmentShaderIdx: usize) usize;
 pub extern fn useProgram(programIdx: usize) void;
@@ -12,6 +15,14 @@ pub extern fn drawArrays(count: usize) void;
 pub extern fn clearColor(r: f32, g: f32, b: f32, a: f32) void;
 pub extern fn clear(color: usize) void;
 pub extern fn bindAndCreateTexture(srcPtr: [*]const u8, srcLen: usize) i32;
+pub extern fn createFramebuffer() usize;
+pub extern fn bindFramebuffer(framebufferIdx: usize) void;
+pub extern fn activeTexture(textureUnit: usize) void;
+pub extern fn createTexture() usize;
+pub extern fn bindTexture(textureIdx: usize) void;
+pub extern fn bindNullTexture() void;
+pub extern fn createFramebufferTexture(width: i32, heigth: i32) usize;
+pub extern fn bindNullFramebuffer() void;
 
 extern fn uniform3f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32, y: f32, z: f32) void;
 extern fn uniform1f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32) void;

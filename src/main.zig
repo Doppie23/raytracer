@@ -182,7 +182,16 @@ var sky: Sky = undefined;
 
 var prng = std.Random.DefaultPrng.init(0);
 const rand = prng.random();
-export fn init() void {
+
+var active_fbo: Fbo = undefined;
+var other_fbo: Fbo = undefined;
+var pp_program: usize = undefined;
+
+export fn init(width: i32, height: i32) void {
+    active_fbo = createFbo(width, height, gl.TEXTURE0);
+    other_fbo = createFbo(width, height, gl.TEXTURE1);
+    pp_program = createPostProcessShader();
+
     sky = Sky.init(Vec3.init(0.1, 0.1, 0.1), "dikhololo_night_2k.png");
     floor = Floor{
         .position = Vec3{ .x = 0, .y = 0, .z = 0 },
@@ -201,7 +210,13 @@ export fn init() void {
 }
 
 var num_of_samples: i32 = 0;
-export fn tick(width: i32, height: i32, previous_frame: i32) void {
+export fn tick(width: i32, height: i32) void {
+    // draw the scene to the framebuffer
+    gl.bindFramebuffer(active_fbo.framebuffer);
+
+    gl.activeTexture(active_fbo.texture_unit);
+    gl.bindNullTexture();
+
     const changed = handleKeyState();
     if (changed) {
         num_of_samples = 0;
@@ -216,7 +231,7 @@ export fn tick(width: i32, height: i32, previous_frame: i32) void {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
-    gl.uniform(i32, program, "previousFrame", previous_frame);
+    gl.uniform(i32, program, "previousFrame", @intCast(other_fbo.texture_unit - gl.TEXTURE0));
     gl.uniform(i32, program, "numOfSamples", num_of_samples);
     num_of_samples += 1;
 
@@ -255,6 +270,20 @@ export fn tick(width: i32, height: i32, previous_frame: i32) void {
     gl.uniform(f32, program, "ambientIntensity", ambient_intensity);
 
     gl.drawArrays(3);
+
+    // draw the framebuffer to the canvas
+    gl.bindNullFramebuffer();
+    gl.useProgram(pp_program);
+
+    gl.activeTexture(active_fbo.texture_unit);
+    gl.bindTexture(active_fbo.texture);
+    gl.uniform(i32, pp_program, "u_texture", @intCast(active_fbo.texture_unit - gl.TEXTURE0));
+
+    gl.drawArrays(3);
+
+    const temp = active_fbo;
+    active_fbo = other_fbo;
+    other_fbo = temp;
 }
 
 fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_index: *usize) void {
@@ -332,4 +361,51 @@ fn handleKeyState() bool {
         changes = true;
     }
     return changes;
+}
+
+const Fbo = struct {
+    framebuffer: usize,
+    texture: usize,
+    texture_unit: usize,
+};
+
+fn createFbo(width: i32, height: i32, texture_unit: usize) Fbo {
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(framebuffer);
+    const texture = gl.createFramebufferTexture(width, height);
+
+    return .{
+        .framebuffer = framebuffer,
+        .texture = texture,
+        .texture_unit = texture_unit,
+    };
+}
+
+fn createPostProcessShader() usize {
+    const vertex =
+        \\ #version 300 es
+        \\ out vec2 v_texCoord;
+        \\ void main() {
+        \\   vec2 pos = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+        \\   v_texCoord = vec2(pos.x, pos.y);
+        \\   gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+        \\ }
+    ;
+    const fragment =
+        \\ #version 300 es
+        \\ precision mediump float;
+        \\
+        \\ in vec2 v_texCoord;
+        \\ uniform sampler2D u_texture;
+        \\ out vec4 fragColor;
+        \\
+        \\ void main() {
+        \\   fragColor = texture(u_texture, v_texCoord);
+        \\ }
+    ;
+
+    const vertex_idx = gl.compileShader(vertex.ptr, vertex.len, gl.VERTEX_SHADER);
+    const fragment_idx = gl.compileShader(fragment.ptr, fragment.len, gl.FRAGMENT_SHADER);
+
+    return gl.createProgram(vertex_idx, fragment_idx);
 }
