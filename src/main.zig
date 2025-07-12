@@ -2,6 +2,7 @@ const std = @import("std");
 const print = @import("utils.zig").print;
 const gl = @import("gl.zig");
 const math = @import("math.zig");
+const PingPongBuffer = @import("PingPongBuffer.zig");
 
 const Vec3 = math.Vec3;
 const Color = Vec3;
@@ -121,7 +122,7 @@ const Texture = struct {
 
         var new = self;
         new.has_image = true;
-        new.texture_unit = index;
+        new.texture_unit = @intCast(index);
         return new;
     }
 };
@@ -183,14 +184,10 @@ var sky: Sky = undefined;
 var prng = std.Random.DefaultPrng.init(0);
 const rand = prng.random();
 
-var active_fbo: Fbo = undefined;
-var other_fbo: Fbo = undefined;
-var pp_program: usize = undefined;
+var ping_pong_buffer: PingPongBuffer = undefined;
 
-export fn init(width: i32, height: i32) void {
-    active_fbo = createFbo(width, height, gl.TEXTURE0);
-    other_fbo = createFbo(width, height, gl.TEXTURE1);
-    pp_program = createPostProcessShader();
+export fn init(width: usize, height: usize) void {
+    ping_pong_buffer = .init(width, height, gl.TEXTURE0, gl.TEXTURE1);
 
     sky = Sky.init(Vec3.init(0.1, 0.1, 0.1), "dikhololo_night_2k.png");
     floor = Floor{
@@ -209,13 +206,10 @@ export fn init(width: i32, height: i32) void {
     program = gl.createProgram(vertex_idx, fragment_idx);
 }
 
-var num_of_samples: i32 = 0;
-export fn tick(width: i32, height: i32) void {
+var num_of_samples: usize = 0;
+export fn tick(width: usize, height: usize) void {
     // draw the scene to the framebuffer
-    gl.bindFramebuffer(active_fbo.framebuffer);
-
-    gl.activeTexture(active_fbo.texture_unit);
-    gl.bindNullTexture();
+    ping_pong_buffer.bind();
 
     const changed = handleKeyState();
     if (changed) {
@@ -231,14 +225,14 @@ export fn tick(width: i32, height: i32) void {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
-    gl.uniform(i32, program, "previousFrame", @intCast(other_fbo.texture_unit - gl.TEXTURE0));
-    gl.uniform(i32, program, "numOfSamples", num_of_samples);
+    gl.uniform(usize, program, "previousFrame", ping_pong_buffer.other.texture_unit - gl.TEXTURE0);
+    gl.uniform(usize, program, "numOfSamples", num_of_samples);
     num_of_samples += 1;
 
     gl.uniform(f32, program, "seed", rand.float(f32));
-    gl.uniform(i32, program, "maxRecursionDepth", maxRecursionDepth);
-    gl.uniform(i32, program, "width", width);
-    gl.uniform(i32, program, "heigth", height);
+    gl.uniform(usize, program, "maxRecursionDepth", maxRecursionDepth);
+    gl.uniform(usize, program, "width", width);
+    gl.uniform(usize, program, "heigth", height);
 
     gl.uniform(Vec3, program, "camera.position", camera.position);
     gl.uniform(Vec3, program, "camera.direction", camera.direction);
@@ -249,7 +243,7 @@ export fn tick(width: i32, height: i32) void {
     gl.uniform(f32, program, "floorPlane.textureSize", floor.texture_size);
     setTextureUniform("floorPlane", floor.texture, texture_index);
 
-    gl.uniform(i32, program, "sphereCount", spheres.len);
+    gl.uniform(usize, program, "sphereCount", spheres.len);
     inline for (spheres, 0..) |sphere, i| {
         gl.uniform(Vec3, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".position", sphere.position);
         gl.uniform(f32, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".radius", sphere.radius);
@@ -257,7 +251,7 @@ export fn tick(width: i32, height: i32) void {
         setTextureUniform(std.fmt.comptimePrint("sphere[{d}]", .{i}), sphere.texture, texture_index);
     }
 
-    gl.uniform(i32, program, "lightCount", lights.len);
+    gl.uniform(usize, program, "lightCount", lights.len);
     inline for (lights, 0..) |light, i| {
         gl.uniform(Vec3, program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".position", light.position);
         gl.uniform(Vec3, program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".color", light.color);
@@ -272,18 +266,9 @@ export fn tick(width: i32, height: i32) void {
     gl.drawArrays(3);
 
     // draw the framebuffer to the canvas
-    gl.bindNullFramebuffer();
-    gl.useProgram(pp_program);
+    ping_pong_buffer.draw_active_to_screen();
 
-    gl.activeTexture(active_fbo.texture_unit);
-    gl.bindTexture(active_fbo.texture);
-    gl.uniform(i32, pp_program, "u_texture", @intCast(active_fbo.texture_unit - gl.TEXTURE0));
-
-    gl.drawArrays(3);
-
-    const temp = active_fbo;
-    active_fbo = other_fbo;
-    other_fbo = temp;
+    ping_pong_buffer.swap();
 }
 
 fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_index: *usize) void {
@@ -295,7 +280,7 @@ fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_i
     gl.uniform(f32, program, name ++ ".reflectivity", texture.reflectivity);
     gl.uniform(f32, program, name ++ ".roughness", texture.roughness);
     gl.uniform(bool, program, name ++ ".hasImage", texture.has_image);
-    gl.uniform(i32, program, name ++ ".textureIndex", @intCast(texture_index.*));
+    gl.uniform(usize, program, name ++ ".textureIndex", texture_index.*);
 
     if (texture.has_image) {
         var buf: [32]u8 = undefined;
@@ -361,51 +346,4 @@ fn handleKeyState() bool {
         changes = true;
     }
     return changes;
-}
-
-const Fbo = struct {
-    framebuffer: usize,
-    texture: usize,
-    texture_unit: usize,
-};
-
-fn createFbo(width: i32, height: i32, texture_unit: usize) Fbo {
-    const framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(framebuffer);
-    const texture = gl.createFramebufferTexture(width, height);
-
-    return .{
-        .framebuffer = framebuffer,
-        .texture = texture,
-        .texture_unit = texture_unit,
-    };
-}
-
-fn createPostProcessShader() usize {
-    const vertex =
-        \\ #version 300 es
-        \\ out vec2 v_texCoord;
-        \\ void main() {
-        \\   vec2 pos = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
-        \\   v_texCoord = vec2(pos.x, pos.y);
-        \\   gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
-        \\ }
-    ;
-    const fragment =
-        \\ #version 300 es
-        \\ precision mediump float;
-        \\
-        \\ in vec2 v_texCoord;
-        \\ uniform sampler2D u_texture;
-        \\ out vec4 fragColor;
-        \\
-        \\ void main() {
-        \\   fragColor = texture(u_texture, v_texCoord);
-        \\ }
-    ;
-
-    const vertex_idx = gl.compileShader(vertex.ptr, vertex.len, gl.VERTEX_SHADER);
-    const fragment_idx = gl.compileShader(fragment.ptr, fragment.len, gl.FRAGMENT_SHADER);
-
-    return gl.createProgram(vertex_idx, fragment_idx);
 }

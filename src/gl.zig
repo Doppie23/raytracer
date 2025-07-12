@@ -14,14 +14,14 @@ pub extern fn createBufferAndBind(programIdx: usize, dataPtr: [*]const f32, data
 pub extern fn drawArrays(count: usize) void;
 pub extern fn clearColor(r: f32, g: f32, b: f32, a: f32) void;
 pub extern fn clear(color: usize) void;
-pub extern fn bindAndCreateTexture(srcPtr: [*]const u8, srcLen: usize) i32;
+pub extern fn bindAndCreateTexture(srcPtr: [*]const u8, srcLen: usize) usize;
 pub extern fn createFramebuffer() usize;
 pub extern fn bindFramebuffer(framebufferIdx: usize) void;
 pub extern fn activeTexture(textureUnit: usize) void;
 pub extern fn createTexture() usize;
 pub extern fn bindTexture(textureIdx: usize) void;
 pub extern fn bindNullTexture() void;
-pub extern fn createFramebufferTexture(width: i32, heigth: i32) usize;
+pub extern fn createFramebufferTexture(width: usize, heigth: usize) usize;
 pub extern fn bindNullFramebuffer() void;
 
 extern fn uniform3f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32, y: f32, z: f32) void;
@@ -37,6 +37,9 @@ pub fn uniform(comptime T: type, programIdx: usize, name: []const u8, value: T) 
     }
     if (T == i32) {
         return uniform1i(programIdx, name.ptr, name.len, value);
+    }
+    if (T == usize) {
+        return uniform1i(programIdx, name.ptr, name.len, @intCast(value));
     }
     if (T == bool) {
         return uniform1i(programIdx, name.ptr, name.len, if (value) 1 else 0);
