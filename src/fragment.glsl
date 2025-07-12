@@ -7,8 +7,7 @@ precision highp float;
 // because we only have 32 texture units available in openGL
 #define MAX_TEXTURE_IMAGES (min(gl_MaxTextureImageUnits, 32) - 2) // minus 2 as we need to use two as render targets
 
-#define IMAGE_SIZE (MAX_TEXTURE_IMAGES / 2)
-// #define UV_SIZE (MAX_TEXTURE_IMAGES / 2)
+#define IMAGE_SIZE MAX_TEXTURE_IMAGES
 #define SPHERE_SIZE 12
 #define PLANE_SIZE 12
 #define LIGHT_SIZE 12
@@ -34,12 +33,13 @@ struct Texture {
     uint textureIndex;
 };
 
+const int TYPE_SPHERE = 0;
+const int TYPE_FLOOR = 1;
 struct Intersection {
     bool hit;
     float t;
     vec3 point;
-    // TODO: use enum, or just variables
-    int type; // 0 = sphere, 1 = floor, 2 = plane
+    int type;
     uint index;
 };
 
@@ -98,15 +98,11 @@ Intersection noIntersection() {
 
 vec3 getTextureColor(uint index, vec2 uv) {
     vec3 color;
-    // TODO: get a version with dynamic indexing
+    // TODO: use a sampler2DArray
     if (index == 0u) color = texture(textures[0], uv).rgb;
     else if (index == 1u) color = texture(textures[1], uv).rgb;
     else if (index == 2u) color = texture(textures[2], uv).rgb;
     else if (index == 3u) color = texture(textures[3], uv).rgb;
-    else if (index == 4u) color = texture(textures[4], uv).rgb;
-    else if (index == 5u) color = texture(textures[5], uv).rgb;
-    // else if (index == 6) color = texture(textures[6], uv).rgb;
-    // else if (index == 7) color = texture(textures[7], uv).rgb;
     return color;
 }
 
@@ -137,20 +133,7 @@ vec2 getSphereUv(vec3 normal) {
 
 vec3 getSphereNormal(Sphere sphere, vec3 point, vec2 uv) {
     vec3 normal = normalize(point - sphere.position);
-    // if (!sphere.texture.hasNormalMap)
-        return normal;
-    //
-    // vec3 uvNormal = getNormalVectorFromMap(sphere.texture.normalMapIndex, uv);
-    //
-    // vec3 uvPlaneNormal = vec3(0, 1, 0);
-    //
-    // vec3 rotationAxis = normalize(cross(normal, uvPlaneNormal));
-    //
-    // float rotationAngle = acos(dot(uvPlaneNormal, normal));
-    //
-    // mat3 rotationMatrix = rotationMatrix(rotationAxis, rotationAngle);
-    //
-    // return normalize(uvNormal * rotationMatrix);
+    return normal;
 }
 
 float getDistanceToViewPlane(float planeWidth, float planeHeight) {
@@ -203,7 +186,7 @@ Intersection intersectsSphere(Ray ray, Sphere sphere, uint index) {
         true,
         t2,
         getPoint(ray, t2),
-        0,
+        TYPE_SPHERE,
         index
     );
 }
@@ -222,7 +205,7 @@ Intersection intersectsFloor(Ray ray, Floor floorPlane) {
         true,
         t,
         getPoint(ray, t),
-        1,
+        TYPE_FLOOR,
         0u
     );
 }
@@ -243,9 +226,7 @@ vec2 getFloorUv(Floor floorPlane, vec3 point) {
 }
 
 vec3 getFloorNormal(Floor floorPlane, vec2 uv) {
-    // if (!floorPlane.texture.hasNormalMap)
-        return vec3(0.0, 1.0, 0.0);
-    // return getNormalVectorFromMap(floorPlane.texture.normalMapIndex, uv);
+    return vec3(0.0, 1.0, 0.0);
 }
 
 void updateClosestIntersection(Intersection intersection, inout Intersection closestIntersection) {
@@ -353,21 +334,16 @@ vec3 traceRay(Ray ray, inout vec2 co) {
         vec3 n;
         vec2 uv;
 
-        if (intersection.type == 0) {
+        if (intersection.type == TYPE_SPHERE) {
             Sphere sphere = sphere[intersection.index];
             vec3 normal = normalize(intersection.point - sphere.position);
             texture = sphere.texture;
             uv = getSphereUv(normal);
             n = getSphereNormal(sphere, intersection.point, uv);
-        } else if (intersection.type == 1) {
+        } else if (intersection.type == TYPE_FLOOR) {
             texture = floorPlane.texture;
             uv = getFloorUv(floorPlane, intersection.point);
             n = getFloorNormal(floorPlane, uv);
-        // } else if (intersection.type == 2) {
-        //     Plane plane = plane[intersection.index];
-        //     texture = plane.texture;
-        //     uv = getPlaneUv(plane, intersection.point);
-        //     n = getPlaneNormal(plane, ray.origin, uv);
         } else {
             // unknown object
             return vec3(0.0);
@@ -482,12 +458,4 @@ void main() {
         float f_numOfSamples = float(numOfSamples);
         outputColor = (previousColor * f_numOfSamples + outputColor) / (f_numOfSamples + 1.0);
     }
-
-
-    // outputColor = vec4(vec3(sphere[2].texture.roughness), 1.0);
-    // outputColor = vec4(ambientIntensity, 0.0, 0.0, 1.0);
-    // outputColor = vec4(1.0, 0.0, 0.0, 1.0);
-
-    // gl_FragColor = vec4(sphere[0].position, 1.0);
-    // gl_FragColor = vec4(ray.direction, 1.0);
 }
