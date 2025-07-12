@@ -1,11 +1,12 @@
 #version 300 es
 
-#define PI 3.141592
 precision highp float;
+
+#define PI 3.141592
 
 // either the hardware limit or 32
 // because we only have 32 texture units available in openGL
-#define MAX_TEXTURE_IMAGES (min(gl_MaxTextureImageUnits, 32) - 2) // minus 2 as we need to use two as render targets
+#define MAX_TEXTURE_IMAGES (min(gl_MaxTextureImageUnits, 32) - 2) // minus 2 because we use the first two texture units for the ping pong framebuffers
 
 #define IMAGE_SIZE MAX_TEXTURE_IMAGES
 #define SPHERE_SIZE 12
@@ -92,6 +93,8 @@ uniform uint lightCount;
 uniform Sky sky;
 uniform float ambientIntensity;
 
+out vec4 outputColor;
+
 Intersection noIntersection() {
     return Intersection(false, 0.0, vec3(0.0), -1, 0u);
 }
@@ -134,36 +137,6 @@ vec2 getSphereUv(vec3 normal) {
 vec3 getSphereNormal(Sphere sphere, vec3 point, vec2 uv) {
     vec3 normal = normalize(point - sphere.position);
     return normal;
-}
-
-float getDistanceToViewPlane(float planeWidth, float planeHeight) {
-    return sqrt((planeWidth * planeWidth) + (planeHeight * planeHeight)) / (2.0 * tan(radians(camera.fov / 2.0)));
-}
-
-Ray getRayForPixel(Camera camera, vec2 uv) {
-    float planeWidth;
-    float planeHeight;
-    if (width >= heigth) {
-        planeWidth = 1.0;
-        planeHeight = 1.0 * float(heigth) / float(width);
-    } else {
-        planeWidth = 1.0 * float(width) / float(heigth);
-        planeHeight = 1.0;
-    }
-
-    vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), camera.direction));
-    vec3 up = cross(camera.direction, right);
-
-    vec3 centerPlane = camera.position + camera.direction * getDistanceToViewPlane(planeWidth, planeHeight);
-
-    vec3 p0 = centerPlane + (planeHeight / 2.0) * up - (planeWidth / 2.0) * right;
-    vec3 p1 = centerPlane + (planeHeight / 2.0) * up + (planeWidth / 2.0) * right;
-    vec3 p2 = centerPlane - (planeHeight / 2.0) * up - (planeWidth / 2.0) * right;
-
-    vec3 pixelLocation = p0 + uv.x * (p1 - p0) + uv.y * (p2 - p0);
-    vec3 direction = pixelLocation - camera.position;
-
-    return Ray(camera.position, normalize(direction));
 }
 
 Intersection intersectsSphere(Ray ray, Sphere sphere, uint index) {
@@ -229,6 +202,37 @@ vec3 getFloorNormal(Floor floorPlane, vec2 uv) {
     return vec3(0.0, 1.0, 0.0);
 }
 
+float getDistanceToViewPlane(float planeWidth, float planeHeight) {
+    return sqrt((planeWidth * planeWidth) + (planeHeight * planeHeight)) / (2.0 * tan(radians(camera.fov / 2.0)));
+}
+
+Ray getRayForPixel(Camera camera, vec2 uv) {
+    float planeWidth;
+    float planeHeight;
+    if (width >= heigth) {
+        planeWidth = 1.0;
+        planeHeight = 1.0 * float(heigth) / float(width);
+    } else {
+        planeWidth = 1.0 * float(width) / float(heigth);
+        planeHeight = 1.0;
+    }
+
+    vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), camera.direction));
+    vec3 up = cross(camera.direction, right);
+
+    vec3 centerPlane = camera.position + camera.direction * getDistanceToViewPlane(planeWidth, planeHeight);
+
+    vec3 p0 = centerPlane + (planeHeight / 2.0) * up - (planeWidth / 2.0) * right;
+    vec3 p1 = centerPlane + (planeHeight / 2.0) * up + (planeWidth / 2.0) * right;
+    vec3 p2 = centerPlane - (planeHeight / 2.0) * up - (planeWidth / 2.0) * right;
+
+    vec3 pixelLocation = p0 + uv.x * (p1 - p0) + uv.y * (p2 - p0);
+    vec3 direction = pixelLocation - camera.position;
+
+    return Ray(camera.position, normalize(direction));
+}
+
+
 void updateClosestIntersection(Intersection intersection, inout Intersection closestIntersection) {
     if (intersection.hit) {
         if (
@@ -293,12 +297,6 @@ float specularIntensity(float specular, uint shininess, vec3 v, vec3 r) {
     float max2 = max(0.0, dot(v, r));
     return ks * pow(max2, float(shininess));
 }
-
-struct HitData {
-    vec3 finalColor;
-    vec3 albedo;
-    Texture texture;
-};
 
 vec3 traceRay(Ray ray, inout vec2 co) {
     vec3 color = vec3(1.0);
@@ -368,10 +366,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
 
             Ray rayToLight = Ray(intersection.point, normalize(light.position - intersection.point));
 
-            if (
-                // !isInLightCone(light, intersection.point) ||
-                isInShadow(rayToLight, light)
-            )
+            if (isInShadow(rayToLight, light))
                 continue;
 
             vec3 l = rayToLight.direction;
@@ -438,9 +433,6 @@ vec3 traceRay(Ray ray, inout vec2 co) {
 
     return color;
 }
-
-
-out vec4 outputColor;
 
 void main() {
     vec2 co = v_Uv * seed;
