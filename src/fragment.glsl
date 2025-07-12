@@ -12,7 +12,6 @@ precision highp float;
 #define SPHERE_SIZE 12
 #define PLANE_SIZE 12
 #define LIGHT_SIZE 12
-#define MAX_MAX_RECURSION_DEPTH 10 // the max for the max...
 
 struct Ray {
     vec3 origin;
@@ -323,7 +322,7 @@ struct HitData {
 vec3 traceRay(Ray ray, inout vec2 co) {
     vec3 color = vec3(1.0);
 
-    for (int bounces = 0; bounces <= MAX_MAX_RECURSION_DEPTH; bounces++) {
+    for (int bounces = 0; bounces <= maxRecursionDepth; bounces++) {
         if (bounces >= maxRecursionDepth) {
             return vec3(0.0);
         }
