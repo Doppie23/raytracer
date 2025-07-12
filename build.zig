@@ -24,7 +24,8 @@ pub fn build(b: *std.Build) void {
     wasm_bin.rdynamic = true;
     wasm_bin.entry = .disabled;
 
-    b.installArtifact(wasm_bin);
+    const install = b.addInstallArtifact(wasm_bin, .{ .dest_dir = .{ .override = .{ .custom = "../public/" } } });
+    b.default_step.dependOn(&install.step);
 
     //
     // // This creates a "module", which represents a collection of source files alongside

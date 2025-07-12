@@ -197,7 +197,7 @@
     clear: (x) => gl.clear(x),
   };
 
-  const res = await fetch("zig-out/bin/raytracer.wasm");
+  const res = await fetch("raytracer.wasm");
   const bytes = await res.arrayBuffer();
 
   const results = await WebAssembly.instantiate(bytes, { env });
@@ -217,12 +217,12 @@
     ShiftLeft: 5,
   };
   document.addEventListener("keydown", (e) => {
-    if (e.code in keymap) {
+    if (e.code in keymap && document.pointerLockElement === canvas) {
       exports.onKeyDown(keymap[e.code], true);
     }
   });
   document.addEventListener("keyup", (e) => {
-    if (e.code in keymap) {
+    if (e.code in keymap && document.pointerLockElement === canvas) {
       exports.onKeyDown(keymap[e.code], false);
     }
   });

@@ -181,14 +181,14 @@ export fn init(width: usize, height: usize) void {
     ping_pong_buffer = .init(width, height, gl.TEXTURE0, gl.TEXTURE1);
     resource_manager = .init(gl.TEXTURE2);
 
-    const sky_img = resource_manager.create_texture("dikhololo_night_2k.png");
-    const ground_img = resource_manager.create_texture("ground.png");
+    const sky_img = resource_manager.create_texture("assets/dikhololo_night_2k.png");
+    const ground_img = resource_manager.create_texture("assets/ground.png");
 
     sky.texture.addImage(sky_img);
     floor.texture.addImage(ground_img);
 
-    const vertex = @embedFile("vertex.glsl");
-    const fragment = @embedFile("fragment.glsl");
+    const vertex = @embedFile("shaders/vertex.glsl");
+    const fragment = @embedFile("shaders/fragment.glsl");
 
     const vertex_idx = gl.compileShader(vertex.ptr, vertex.len, gl.VERTEX_SHADER);
     const fragment_idx = gl.compileShader(fragment.ptr, fragment.len, gl.FRAGMENT_SHADER);
