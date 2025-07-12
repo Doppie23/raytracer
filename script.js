@@ -70,13 +70,17 @@
     const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
     gl.uniform3f(loc, x, y, z);
   };
-  const uniform1f = (p, uPtr, uLen, x, y, z) => {
+  const uniform1f = (p, uPtr, uLen, x) => {
     const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
     gl.uniform1f(loc, x);
   };
-  const uniform1i = (p, uPtr, uLen, x, y, z) => {
+  const uniform1i = (p, uPtr, uLen, x) => {
     const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
     gl.uniform1i(loc, x);
+  };
+  const uniform1ui = (p, uPtr, uLen, x) => {
+    const loc = gl.getUniformLocation(programs[p], readString(uPtr, uLen));
+    gl.uniform1ui(loc, x);
   };
 
   const bindAndCreateTexture = (srcPtr, srcLen, textureUnit) => {
@@ -178,6 +182,7 @@
     uniform3f,
     uniform1f,
     uniform1i,
+    uniform1ui,
     bindAndCreateTexture,
     createFramebuffer,
     bindFramebuffer,

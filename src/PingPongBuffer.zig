@@ -31,7 +31,7 @@ pub fn draw_active_to_screen(self: Self) void {
 
     gl.activeTexture(self.active.texture_unit.num);
     gl.bindTexture(self.active.texture);
-    gl.uniform(usize, self.program, "u_texture", self.active.texture_unit.toIndex());
+    gl.uniform(i32, self.program, "u_texture", self.active.texture_unit.toIndex());
 
     gl.drawArrays(3);
 }

@@ -15,8 +15,8 @@ pub const TextureUnit = struct {
 
     /// the index of the texture unit, used when passing it to a texture2D in a shader
     /// TEXTURE0 = 0
-    pub fn toIndex(self: TextureUnit) usize {
-        return self.num - TEXTURE0.num;
+    pub fn toIndex(self: TextureUnit) i32 {
+        return @intCast(self.num - TEXTURE0.num);
     }
 };
 
@@ -39,6 +39,7 @@ pub extern fn bindNullFramebuffer() void;
 extern fn uniform3f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32, y: f32, z: f32) void;
 extern fn uniform1f(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: f32) void;
 extern fn uniform1i(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: i32) void;
+extern fn uniform1ui(programIdx: usize, uniformPtr: [*]const u8, uniformLen: usize, x: u32) void;
 
 pub fn uniform(comptime T: type, programIdx: usize, name: []const u8, value: T) void {
     if (T == Vec3) {
@@ -50,8 +51,8 @@ pub fn uniform(comptime T: type, programIdx: usize, name: []const u8, value: T) 
     if (T == i32) {
         return uniform1i(programIdx, name.ptr, name.len, value);
     }
-    if (T == usize) {
-        return uniform1i(programIdx, name.ptr, name.len, @intCast(value));
+    if (T == u32) {
+        return uniform1ui(programIdx, name.ptr, name.len, value);
     }
     if (T == bool) {
         return uniform1i(programIdx, name.ptr, name.len, if (value) 1 else 0);

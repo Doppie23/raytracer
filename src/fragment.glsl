@@ -27,11 +27,11 @@ struct Camera {
 struct Texture {
     vec3 albedo;
     float specular;
-    int shininess;
+    uint shininess;
     float reflectivity;
     float roughness;
     bool hasImage;
-    int textureIndex;
+    uint textureIndex;
 };
 
 struct Intersection {
@@ -40,7 +40,7 @@ struct Intersection {
     vec3 point;
     // TODO: use enum, or just variables
     int type; // 0 = sphere, 1 = floor, 2 = plane
-    int index;
+    uint index;
 };
 
 struct Sphere {
@@ -69,42 +69,42 @@ struct Sky {
 in vec2 v_Uv;
 
 uniform sampler2D previousFrame;
-uniform int numOfSamples;
+uniform uint numOfSamples;
 
 uniform sampler2D textures[IMAGE_SIZE];
 
 uniform float seed;
 
-uniform int maxRecursionDepth;
-uniform int width;
-uniform int heigth;
+uniform uint maxRecursionDepth;
+uniform uint width;
+uniform uint heigth;
 uniform Camera camera;
 
 uniform Floor floorPlane;
 uniform bool shadeFloor;
 
 uniform Sphere sphere[SPHERE_SIZE];
-uniform int sphereCount;
+uniform uint sphereCount;
 
 uniform Light light[LIGHT_SIZE];
-uniform int lightCount;
+uniform uint lightCount;
 
 uniform Sky sky;
 uniform float ambientIntensity;
 
 Intersection noIntersection() {
-    return Intersection(false, 0.0, vec3(0.0), -1, -1);
+    return Intersection(false, 0.0, vec3(0.0), -1, 0u);
 }
 
-vec3 getTextureColor(int index, vec2 uv) {
+vec3 getTextureColor(uint index, vec2 uv) {
     vec3 color;
     // TODO: get a version with dynamic indexing
-    if (index == 0) color = texture(textures[0], uv).rgb;
-    else if (index == 1) color = texture(textures[1], uv).rgb;
-    else if (index == 2) color = texture(textures[2], uv).rgb;
-    else if (index == 3) color = texture(textures[3], uv).rgb;
-    else if (index == 4) color = texture(textures[4], uv).rgb;
-    else if (index == 5) color = texture(textures[5], uv).rgb;
+    if (index == 0u) color = texture(textures[0], uv).rgb;
+    else if (index == 1u) color = texture(textures[1], uv).rgb;
+    else if (index == 2u) color = texture(textures[2], uv).rgb;
+    else if (index == 3u) color = texture(textures[3], uv).rgb;
+    else if (index == 4u) color = texture(textures[4], uv).rgb;
+    else if (index == 5u) color = texture(textures[5], uv).rgb;
     // else if (index == 6) color = texture(textures[6], uv).rgb;
     // else if (index == 7) color = texture(textures[7], uv).rgb;
     return color;
@@ -183,7 +183,7 @@ Ray getRayForPixel(Camera camera, vec2 uv) {
     return Ray(camera.position, normalize(direction));
 }
 
-Intersection intersectsSphere(Ray ray, Sphere sphere, int index) {
+Intersection intersectsSphere(Ray ray, Sphere sphere, uint index) {
     vec3 oc = ray.origin - sphere.position;
 
     float a = dot(ray.direction, ray.direction);
@@ -223,7 +223,7 @@ Intersection intersectsFloor(Ray ray, Floor floorPlane) {
         t,
         getPoint(ray, t),
         1,
-        -1
+        0u
     );
 }
 
@@ -263,7 +263,7 @@ Intersection getClosestIntersection(Ray ray) {
     Intersection closestIntersection = noIntersection();
 
     // spheres
-    for (int i = 0; i < sphereCount; i++) {
+    for (uint i = 0u; i < sphereCount; i++) {
         Sphere sphere = sphere[i];
 
         Intersection intersection = intersectsSphere(ray, sphere, i);
@@ -307,7 +307,7 @@ vec3 diffuseColor(vec3 albedo, vec3 n, vec3 l) {
     return albedo * max(0.0, dot(n, l));
 }
 
-float specularIntensity(float specular, int shininess, vec3 v, vec3 r) {
+float specularIntensity(float specular, uint shininess, vec3 v, vec3 r) {
     float ks = specular;
     float max2 = max(0.0, dot(v, r));
     return ks * pow(max2, float(shininess));
@@ -322,7 +322,7 @@ struct HitData {
 vec3 traceRay(Ray ray, inout vec2 co) {
     vec3 color = vec3(1.0);
 
-    for (int bounces = 0; bounces <= maxRecursionDepth; bounces++) {
+    for (uint bounces = 0u; bounces <= maxRecursionDepth; bounces++) {
         if (bounces >= maxRecursionDepth) {
             return vec3(0.0);
         }
@@ -332,14 +332,14 @@ vec3 traceRay(Ray ray, inout vec2 co) {
         // sky intersection
         if (!intersection.hit) {
             vec3 skyColor;
-            if (sky.texture.textureIndex >= 0 && sky.texture.hasImage) {
+            if (sky.texture.textureIndex >= 0u && sky.texture.hasImage) {
                 vec2 uv = getSphereUv(-ray.direction);
                 skyColor = getTextureColor(sky.texture.textureIndex, uv);
             } else {
                 skyColor = sky.texture.albedo;
             }
 
-            if (bounces == 0) {
+            if (bounces == 0u) {
                 return skyColor;
             } else {
                 color *= skyColor;
@@ -387,7 +387,7 @@ vec3 traceRay(Ray ray, inout vec2 co) {
         vec3 v = ray.direction;
 
         vec3 finalColor = vec3(0.0);
-        for (int i = 0; i < lightCount; i++) {
+        for (uint i = 0u; i < lightCount; i++) {
             Light light = light[i];
 
             Ray rayToLight = Ray(intersection.point, normalize(light.position - intersection.point));
@@ -477,7 +477,7 @@ void main() {
     vec3 color = traceRay(ray, co);
     outputColor = vec4(color, 1.0);
 
-    if (numOfSamples > 0) {
+    if (numOfSamples > 0u) {
         vec4 previousColor = texture(previousFrame, vec2(v_Uv.x, 1.0 - v_Uv.y));
         float f_numOfSamples = float(numOfSamples);
         outputColor = (previousColor * f_numOfSamples + outputColor) / (f_numOfSamples + 1.0);

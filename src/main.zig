@@ -76,7 +76,7 @@ const Camera = struct {
 const Texture = struct {
     albedo: Vec3,
     specular: f32,
-    shininess: i32,
+    shininess: u32,
     reflectivity: f32,
     roughness: f32,
     has_image: bool,
@@ -210,8 +210,8 @@ export fn init(width: usize, height: usize) void {
     program = gl.createProgram(vertex_idx, fragment_idx);
 }
 
-var num_of_samples: usize = 0;
-export fn tick(width: usize, height: usize) void {
+var num_of_samples: u32 = 0;
+export fn tick(width: u32, height: u32) void {
     // draw the scene to the framebuffer
     ping_pong_buffer.bind();
 
@@ -222,21 +222,21 @@ export fn tick(width: usize, height: usize) void {
 
     gl.useProgram(program);
 
-    var t_idx: usize = 0;
-    const texture_index: *usize = &t_idx;
+    var t_idx: u32 = 0;
+    const texture_index: *u32 = &t_idx;
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // set uniforms
-    gl.uniform(usize, program, "previousFrame", ping_pong_buffer.other.texture_unit.toIndex());
-    gl.uniform(usize, program, "numOfSamples", num_of_samples);
+    gl.uniform(i32, program, "previousFrame", ping_pong_buffer.other.texture_unit.toIndex());
+    gl.uniform(u32, program, "numOfSamples", num_of_samples);
     num_of_samples += 1;
 
     gl.uniform(f32, program, "seed", rand.float(f32));
-    gl.uniform(usize, program, "maxRecursionDepth", maxRecursionDepth);
-    gl.uniform(usize, program, "width", width);
-    gl.uniform(usize, program, "heigth", height);
+    gl.uniform(u32, program, "maxRecursionDepth", maxRecursionDepth);
+    gl.uniform(u32, program, "width", width);
+    gl.uniform(u32, program, "heigth", height);
 
     gl.uniform(Vec3, program, "camera.position", camera.position);
     gl.uniform(Vec3, program, "camera.direction", camera.direction);
@@ -247,7 +247,7 @@ export fn tick(width: usize, height: usize) void {
     gl.uniform(f32, program, "floorPlane.textureSize", floor.texture_size);
     setTextureUniform("floorPlane", floor.texture, texture_index);
 
-    gl.uniform(usize, program, "sphereCount", spheres.len);
+    gl.uniform(u32, program, "sphereCount", spheres.len);
     inline for (spheres, 0..) |sphere, i| {
         gl.uniform(Vec3, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".position", sphere.position);
         gl.uniform(f32, program, std.fmt.comptimePrint("sphere[{d}]", .{i}) ++ ".radius", sphere.radius);
@@ -255,7 +255,7 @@ export fn tick(width: usize, height: usize) void {
         setTextureUniform(std.fmt.comptimePrint("sphere[{d}]", .{i}), sphere.texture, texture_index);
     }
 
-    gl.uniform(usize, program, "lightCount", lights.len);
+    gl.uniform(u32, program, "lightCount", lights.len);
     inline for (lights, 0..) |light, i| {
         gl.uniform(Vec3, program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".position", light.position);
         gl.uniform(Vec3, program, std.fmt.comptimePrint("light[{d}]", .{i}) ++ ".color", light.color);
@@ -275,23 +275,23 @@ export fn tick(width: usize, height: usize) void {
     ping_pong_buffer.swap();
 }
 
-fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_index: *usize) void {
+fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_index: *u32) void {
     const name = base_name ++ ".texture";
 
     gl.uniform(Vec3, program, name ++ ".albedo", texture.albedo);
     gl.uniform(f32, program, name ++ ".specular", texture.specular);
-    gl.uniform(i32, program, name ++ ".shininess", texture.shininess);
+    gl.uniform(u32, program, name ++ ".shininess", texture.shininess);
     gl.uniform(f32, program, name ++ ".reflectivity", texture.reflectivity);
     gl.uniform(f32, program, name ++ ".roughness", texture.roughness);
     gl.uniform(bool, program, name ++ ".hasImage", texture.has_image);
-    gl.uniform(usize, program, name ++ ".textureIndex", texture_index.*);
+    gl.uniform(u32, program, name ++ ".textureIndex", texture_index.*);
 
     if (texture.has_image) {
         var buf: [32]u8 = undefined;
         const tex_name = std.fmt.bufPrint(&buf, "textures[{d}]", .{texture_index.*}) catch unreachable;
         texture_index.* += 1;
 
-        gl.uniform(usize, program, tex_name, texture.texture_unit.?.toIndex());
+        gl.uniform(i32, program, tex_name, texture.texture_unit.?.toIndex());
     }
 }
 
