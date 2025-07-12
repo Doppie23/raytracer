@@ -340,8 +340,8 @@ fn handleKeyState() bool {
     }
     if (keyState.down) {
         camera.position.add(.{ .x = 0, .y = -speed, .z = 0 });
-        if (camera.position.y < 0) {
-            camera.position.y = 0;
+        if (camera.position.y < 0.1) {
+            camera.position.y = 0.1;
         }
         changes = true;
     }
