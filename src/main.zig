@@ -94,6 +94,18 @@ const Texture = struct {
         };
     }
 
+    fn shiny(color: Color, specular: f32, shininess: u32) Texture {
+        return .{
+            .albedo = color,
+            .specular = specular,
+            .shininess = shininess,
+            .reflectivity = 0,
+            .roughness = 0,
+            .has_image = false,
+            .texture_unit = null,
+        };
+    }
+
     fn reflective(color: Color, reflectivity: f32, roughness: f32) Texture {
         return .{
             .albedo = color,
@@ -146,20 +158,28 @@ var key_state = KeyState.init();
 var sky = Sky.init(Color.init(0.16, 0.11, 0.07));
 
 const spheres = [_]Sphere{
-    Sphere{ .position = Vec3{ .x = 0, .y = 0.5, .z = 0 }, .radius = 0.5, .texture = Texture.diffuse(Color.init(1, 0, 0)) },
+    Sphere{ .position = Vec3{ .x = 0, .y = 0.5, .z = 0 }, .radius = 0.5, .texture = Texture.shiny(Color.init(1, 0, 0), 0.8, 256) },
+    Sphere{ .position = Vec3{ .x = -0.6, .y = 0.2, .z = -0.2 }, .radius = 0.2, .texture = Texture.diffuse(Color.init(0, 0.2, 1)) },
     Sphere{ .position = Vec3{ .x = -2, .y = 0.5, .z = 1 }, .radius = 0.5, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = -2.8, .y = 0.4, .z = 0.5 }, .radius = 0.4, .texture = Texture.shiny(Color.init(0.5, 1, 0.7), 0.7, 256) },
     Sphere{ .position = Vec3{ .x = -3, .y = 0.5, .z = -1 }, .radius = 0.5, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = -2.5, .y = 0.1, .z = -0.3 }, .radius = 0.1, .texture = Texture.diffuse(Color.init(1, 1, 0.2)) },
     Sphere{ .position = Vec3{ .x = 2, .y = 0.5, .z = 1 }, .radius = 0.5, .texture = Texture.reflective(Color.init(0, 1, 0), 1, 0.2) },
+    Sphere{ .position = Vec3{ .x = 2.4, .y = 0.5, .z = 0 }, .radius = 0.5, .texture = Texture.mirror(Color.white()) },
+    Sphere{ .position = Vec3{ .x = 1.2, .y = 0.3, .z = -0.7 }, .radius = 0.3, .texture = Texture.reflective(Color.init(1, 0.8, 0), 1, 0.2) },
 };
 
 const lights = [_]Light{
-    Light{ .position = Vec3{ .x = 0.5, .y = 2, .z = 0 }, .color = Vec3.white(), .intensity = 1 },
+    Light{ .position = Vec3{ .x = 0, .y = 4, .z = -1 }, .color = Vec3.white(), .intensity = 1 },
+    Light{ .position = Vec3{ .x = 1.5, .y = 1, .z = 1 }, .color = Vec3.white(), .intensity = 2 },
+    Light{ .position = Vec3{ .x = -1, .y = 3, .z = 2 }, .color = Vec3.white(), .intensity = 7 },
+    Light{ .position = Vec3{ .x = -4, .y = 4, .z = 2.5 }, .color = Vec3.white(), .intensity = 4 },
 };
 
 var floor = Floor{
     .position = Vec3{ .x = 0, .y = 0, .z = 0 },
     .texture_size = 1,
-    .texture = Texture.reflective(Color.white(), 1, 0.5),
+    .texture = Texture.reflective(Color.white(), 1, 0.4),
 };
 
 const ambient_intensity = 0.8;
