@@ -227,6 +227,9 @@
     ArrowRight: 3,
     Space: 4,
     ShiftLeft: 5,
+    KeyZ: 6,
+    KeyX: 7,
+    KeyC: 8,
   };
   document.addEventListener("keydown", (e) => {
     if (e.code in keymap && document.pointerLockElement === canvas) {

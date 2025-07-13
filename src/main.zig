@@ -184,7 +184,8 @@ var floor = Floor{
 
 const ambient_intensity = 0.8;
 
-var camera = Camera.init(90);
+const default_fov = 90;
+var camera = Camera.init(default_fov);
 
 var program: usize = 0;
 
@@ -313,6 +314,9 @@ const KeyState = struct {
     right: bool,
     up: bool,
     down: bool,
+    increase_fov: bool,
+    decrease_fov: bool,
+    reset_fov: bool,
 
     fn init() KeyState {
         return .{
@@ -322,6 +326,9 @@ const KeyState = struct {
             .right = false,
             .up = false,
             .down = false,
+            .increase_fov = false,
+            .decrease_fov = false,
+            .reset_fov = false,
         };
     }
 };
@@ -335,6 +342,9 @@ export fn onKeyDown(key_code: usize, down: bool) void {
         3 => key_state.right = down,
         4 => key_state.up = down,
         5 => key_state.down = down,
+        6 => key_state.decrease_fov = down,
+        7 => key_state.increase_fov = down,
+        8 => key_state.reset_fov = down,
         else => {},
     }
 }
@@ -378,6 +388,24 @@ fn handleKeyState() bool {
         if (camera.position.y < 0.1) {
             camera.position.y = 0.1;
         }
+        changes = true;
+    }
+    if (key_state.increase_fov) {
+        camera.fov -= 1;
+        if (camera.fov < 1) {
+            camera.fov = 1;
+        }
+        changes = true;
+    }
+    if (key_state.decrease_fov) {
+        camera.fov += 1;
+        if (camera.fov > 160) {
+            camera.fov = 160;
+        }
+        changes = true;
+    }
+    if (key_state.reset_fov) {
+        camera.fov = default_fov;
         changes = true;
     }
     return changes;
