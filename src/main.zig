@@ -281,6 +281,11 @@ fn setTextureUniform(comptime base_name: []const u8, texture: Texture, texture_a
     }
 }
 
+export fn onResize(width: u32, height: u32) void {
+    num_of_samples = 0;
+    ping_pong_buffer.resize(width, height);
+}
+
 const KeyState = struct {
     forwards: bool,
     backwards: bool,

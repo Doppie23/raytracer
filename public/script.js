@@ -110,6 +110,11 @@
     framebuffers.push(framebuffer);
     return framebuffers.length - 1;
   };
+  const deleteFramebuffer = (idx) => {
+    const framebuffer = framebuffers[idx];
+    gl.deleteFramebuffer(framebuffer);
+    framebuffers.splice(idx, 1);
+  };
 
   const bindFramebuffer = (framebufferIdx) => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[framebufferIdx]);
@@ -124,6 +129,11 @@
     const tex = gl.createTexture();
     textures.push(tex);
     return textures.length - 1;
+  };
+  const deleteTexture = (idx) => {
+    const tex = textures[idx];
+    gl.deleteTexture(tex);
+    textures.splice(idx, 0);
   };
   const bindTexture = (textureIdx) => {
     gl.bindTexture(gl.TEXTURE_2D, textures[textureIdx]);
@@ -185,9 +195,11 @@
     uniform1ui,
     bindAndCreateTexture,
     createFramebuffer,
+    deleteFramebuffer,
     bindFramebuffer,
     activeTexture,
     createTexture,
+    deleteTexture,
     bindTexture,
     bindNullTexture,
     createFramebufferTexture,
@@ -245,6 +257,25 @@
     },
     false,
   );
+
+  const resizeCanvasToDisplaySize = () => {
+    const { width, height } = canvas.parentElement.getBoundingClientRect();
+
+    const displayWidth = Math.floor(width);
+    const displayHeight = Math.floor(height);
+
+    if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+    }
+
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    exports.onResize(canvas.width, canvas.height);
+  };
+  resizeCanvasToDisplaySize();
+
+  const ro = new ResizeObserver(resizeCanvasToDisplaySize);
+  ro.observe(canvas.parentElement);
 
   exports.init(canvas.width, canvas.height);
 

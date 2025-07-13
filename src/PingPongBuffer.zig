@@ -18,6 +18,14 @@ pub fn init(width: usize, height: usize, texture_unit_one: gl.TextureUnit, textu
     };
 }
 
+pub fn resize(self: *Self, width: usize, height: usize) void {
+    self.active.deinit();
+    self.other.deinit();
+
+    self.active = createFbo(width, height, self.active.texture_unit);
+    self.other = createFbo(width, height, self.other.texture_unit);
+}
+
 pub fn bind(self: Self) void {
     gl.bindFramebuffer(self.active.framebuffer);
 
@@ -46,6 +54,11 @@ const Fbo = struct {
     framebuffer: usize,
     texture: usize,
     texture_unit: gl.TextureUnit,
+
+    fn deinit(self: Fbo) void {
+        gl.deleteFramebuffer(self.framebuffer);
+        gl.deleteTexture(self.texture);
+    }
 };
 
 fn createFbo(width: usize, height: usize, texture_unit: gl.TextureUnit) Fbo {
