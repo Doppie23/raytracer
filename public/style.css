@@ -1,11 +1,115 @@
+@import url("https://fonts.googleapis.com/css2?family=Cascadia+Mono:ital,wght@0,200..700;1,200..700&display=swap");
+
+:root {
+  --border-color: #171924;
+  --light-bg-color: #0f121d;
+  --hover-bg-color: #1b2033;
+}
+
+body {
+  background-color: #0e0e1a;
+  padding: 0;
+  margin: 0;
+
+  font-family: "Cascadia Mono", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+  color: #f6f6f6;
+}
+
+p {
+  margin: 0;
+}
+
+#app {
+  padding: 1rem 1.25rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  #app {
+    padding: 2.5rem 3rem;
+  }
+}
+
 .canvas-container {
   position: relative;
-  width: 80vw;
-  aspect-ratio: 16/9;
+  height: 50vh;
+}
+
+@media (min-width: 768px) {
+  .canvas-container {
+    height: auto;
+    aspect-ratio: 16/9;
+  }
 }
 
 #canvas {
   position: absolute;
   width: 100%;
   height: 100%;
+}
+
+.bottom {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.key-card {
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  padding: 1rem 1.5rem;
+  width: fit-content;
+  background-color: var(--light-bg-color);
+}
+
+.key-card__content {
+  display: flex;
+  gap: 1rem;
+}
+
+.key-card__col > * {
+  margin-bottom: 0.5rem;
+}
+
+.key-info {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.key-info__key {
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  height: 1rem;
+  aspect-ratio: 1/1;
+  padding: 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.github {
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  display: block;
+  height: 1.5rem;
+  aspect-ratio: 1/1;
+  background-color: var(--light-bg-color);
+  transition: background 0.3s;
+}
+.github:hover {
+  background-color: var(--hover-bg-color);
+}
+
+.divider {
+  height: 1px;
+  width: 45%;
+  background-color: var(--border-color);
+  margin: 0.75rem 0;
 }
