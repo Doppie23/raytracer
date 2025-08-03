@@ -1,5 +1,17 @@
 // @ts-check
 
+const keymap = {
+  forwards: ["KeyW", "ArrowUp"],
+  backwards: ["KeyS", "ArrowDown"],
+  left: ["KeyA", "ArrowLeft"],
+  right: ["KeyD", "ArrowRight"],
+  up: ["Space"],
+  down: ["ShiftLeft"],
+  increase_fov: ["KeyZ"],
+  decrease_fov: ["KeyX"],
+  reset_fov: ["KeyC"],
+};
+
 (async () => {
   /** @type {HTMLCanvasElement | null} */
   const canvas = document.querySelector("#canvas");
@@ -217,30 +229,15 @@
   exports = instance.exports;
 
   // desktop controls
-  // TODO: handle keycodes in js
-  const keymap = {
-    KeyW: 0,
-    ArrowUp: 0,
-    KeyA: 1,
-    ArrowLeft: 1,
-    KeyS: 2,
-    ArrowDown: 2,
-    KeyD: 3,
-    ArrowRight: 3,
-    Space: 4,
-    ShiftLeft: 5,
-    KeyZ: 6,
-    KeyX: 7,
-    KeyC: 8,
-  };
+  let keyState = {};
   document.addEventListener("keydown", (e) => {
-    if (e.code in keymap && document.pointerLockElement === canvas) {
-      exports.onKeyDown(keymap[e.code], true);
+    if (document.pointerLockElement === canvas) {
+      keyState[e.code] = true;
     }
   });
   document.addEventListener("keyup", (e) => {
-    if (e.code in keymap && document.pointerLockElement === canvas) {
-      exports.onKeyDown(keymap[e.code], false);
+    if (document.pointerLockElement === canvas) {
+      keyState[e.code] = false;
     }
   });
   canvas.addEventListener("click", async () => {
@@ -258,6 +255,7 @@
         document.addEventListener("mousemove", updatePosition, false);
       } else {
         document.removeEventListener("mousemove", updatePosition, false);
+        keyState = {};
       }
     },
     false,
@@ -314,10 +312,43 @@
   exports.init(canvas.width, canvas.height);
 
   const animate = () => {
-    if (joystick.dx !== 0 || joystick.dy !== 0) {
-      const sens = 0.04;
-      exports.moveCamera(joystick.dy * sens, joystick.dx * sens, 0);
+    const sens = 0.04;
+    exports.moveCamera(joystick.dy * sens, joystick.dx * sens, 0);
+
+    let forward = 0;
+    let right = 0;
+    let up = 0;
+    if (keymap.forwards.some((key) => keyState[key])) {
+      forward += 1;
     }
+    if (keymap.backwards.some((key) => keyState[key])) {
+      forward -= 1;
+    }
+    if (keymap.right.some((key) => keyState[key])) {
+      right += 1;
+    }
+    if (keymap.left.some((key) => keyState[key])) {
+      right -= 1;
+    }
+    if (keymap.up.some((key) => keyState[key])) {
+      up += 1;
+    }
+    if (keymap.down.some((key) => keyState[key])) {
+      up -= 1;
+    }
+
+    if (keymap.increase_fov.some((key) => keyState[key])) {
+      exports.addCameraFov(1);
+    }
+    if (keymap.decrease_fov.some((key) => keyState[key])) {
+      exports.addCameraFov(-1);
+    }
+    if (keymap.reset_fov.some((key) => keyState[key])) {
+      exports.resetCameraFov();
+    }
+
+    exports.moveCamera(forward * sens, right * sens, up * sens);
+
     exports.tick(canvas.width, canvas.height);
     window.requestAnimationFrame(() => animate());
   };

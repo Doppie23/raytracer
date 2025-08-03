@@ -153,8 +153,6 @@ const Sky = struct {
 
 const maxRecursionDepth = 5;
 
-var key_state = KeyState.init();
-
 var sky = Sky.init(Color.init(0.16, 0.11, 0.07));
 
 const spheres = [_]Sphere{
@@ -222,11 +220,6 @@ export fn tick(width: u32, height: u32) void {
     ping_pong_buffer.bind();
 
     defer num_of_samples += 1;
-
-    const changed = handleKeyState();
-    if (changed) {
-        num_of_samples = 0;
-    }
 
     gl.useProgram(program);
 
@@ -307,49 +300,8 @@ export fn onResize(width: u32, height: u32) void {
     ping_pong_buffer.resize(width, height);
 }
 
-const KeyState = struct {
-    forwards: bool,
-    backwards: bool,
-    left: bool,
-    right: bool,
-    up: bool,
-    down: bool,
-    increase_fov: bool,
-    decrease_fov: bool,
-    reset_fov: bool,
-
-    fn init() KeyState {
-        return .{
-            .forwards = false,
-            .backwards = false,
-            .left = false,
-            .right = false,
-            .up = false,
-            .down = false,
-            .increase_fov = false,
-            .decrease_fov = false,
-            .reset_fov = false,
-        };
-    }
-};
-
-export fn onKeyDown(key_code: usize, down: bool) void {
-    // see keymap in js for key codes
-    switch (key_code) {
-        0 => key_state.forwards = down,
-        1 => key_state.left = down,
-        2 => key_state.backwards = down,
-        3 => key_state.right = down,
-        4 => key_state.up = down,
-        5 => key_state.down = down,
-        6 => key_state.decrease_fov = down,
-        7 => key_state.increase_fov = down,
-        8 => key_state.reset_fov = down,
-        else => {},
-    }
-}
-
 export fn moveCamera(forward: f32, right: f32, up: f32) void {
+    if (forward == 0 and right == 0 and up == 0) return;
     const f = camera.forward();
     const l = camera.left();
     camera.position.add(f.mult(forward));
@@ -358,64 +310,25 @@ export fn moveCamera(forward: f32, right: f32, up: f32) void {
     num_of_samples = 0;
 }
 
+export fn addCameraFov(amount: f32) void {
+    camera.fov += amount;
+    if (camera.fov < 1) {
+        camera.fov = 1;
+    }
+    if (camera.fov > 160) {
+        camera.fov = 160;
+    }
+    num_of_samples = 0;
+}
+
+export fn resetCameraFov() void {
+    camera.fov = default_fov;
+    num_of_samples = 0;
+}
+
 export fn onMouseMove(delta_x: f32, delta_y: f32) void {
     const sens = 0.1;
     camera.addYaw(-delta_x * sens);
     camera.addPitch(-delta_y * sens);
     num_of_samples = 0;
-}
-
-fn handleKeyState() bool {
-    const speed = 0.05;
-
-    var changes = false;
-
-    const f = camera.forward();
-    const l = camera.left();
-    if (key_state.forwards) {
-        camera.position.add(f.mult(speed));
-        changes = true;
-    }
-    if (key_state.backwards) {
-        camera.position.add(f.mult(-speed));
-        changes = true;
-    }
-    if (key_state.right) {
-        camera.position.add(l.mult(-speed));
-        changes = true;
-    }
-    if (key_state.left) {
-        camera.position.add(l.mult(speed));
-        changes = true;
-    }
-    if (key_state.up) {
-        camera.position.add(.{ .x = 0, .y = speed, .z = 0 });
-        changes = true;
-    }
-    if (key_state.down) {
-        camera.position.add(.{ .x = 0, .y = -speed, .z = 0 });
-        if (camera.position.y < 0.1) {
-            camera.position.y = 0.1;
-        }
-        changes = true;
-    }
-    if (key_state.increase_fov) {
-        camera.fov -= 1;
-        if (camera.fov < 1) {
-            camera.fov = 1;
-        }
-        changes = true;
-    }
-    if (key_state.decrease_fov) {
-        camera.fov += 1;
-        if (camera.fov > 160) {
-            camera.fov = 160;
-        }
-        changes = true;
-    }
-    if (key_state.reset_fov) {
-        camera.fov = default_fov;
-        changes = true;
-    }
-    return changes;
 }
