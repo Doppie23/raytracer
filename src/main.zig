@@ -349,6 +349,15 @@ export fn onKeyDown(key_code: usize, down: bool) void {
     }
 }
 
+export fn moveCamera(forward: f32, right: f32, up: f32) void {
+    const f = camera.forward();
+    const l = camera.left();
+    camera.position.add(f.mult(forward));
+    camera.position.add(l.mult(-right));
+    camera.position.add(.{ .x = 0, .y = up, .z = 0 });
+    num_of_samples = 0;
+}
+
 export fn onMouseMove(delta_x: f32, delta_y: f32) void {
     const sens = 0.1;
     camera.addYaw(-delta_x * sens);

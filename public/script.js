@@ -216,6 +216,8 @@
   const instance = results.instance;
   exports = instance.exports;
 
+  // desktop controls
+  // TODO: handle keycodes in js
   const keymap = {
     KeyW: 0,
     ArrowUp: 0,
@@ -261,6 +263,35 @@
     false,
   );
 
+  // mobile controls
+  const joystick = new Joystick();
+
+  let previous = null;
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!previous) {
+      previous = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+      return;
+    }
+
+    const dx = -(touch.clientX - previous.x);
+    const dy = -(touch.clientY - previous.y);
+    console.log(dx);
+    exports.onMouseMove(dx, dy);
+
+    previous = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+  });
+  canvas.addEventListener("touchend", () => {
+    previous = null;
+  });
+
   const resizeCanvasToDisplaySize = () => {
     const { width, height } = canvas.parentElement.getBoundingClientRect();
 
@@ -283,8 +314,113 @@
   exports.init(canvas.width, canvas.height);
 
   const animate = () => {
+    if (joystick.dx !== 0 || joystick.dy !== 0) {
+      const sens = 0.04;
+      exports.moveCamera(joystick.dy * sens, joystick.dx * sens, 0);
+    }
     exports.tick(canvas.width, canvas.height);
     window.requestAnimationFrame(() => animate());
   };
   animate();
 })();
+
+class Joystick {
+  /** @type {HTMLDivElement} */
+  outer;
+  /** @type {HTMLDivElement} */
+  inner;
+  /** @type {number} */
+  dx = 0;
+  /** @type {number} */
+  dy = 0;
+
+  constructor() {
+    /** @type {HTMLDivElement | null} */
+    const outer = document.querySelector(".joystick-outer");
+    if (!outer) {
+      throw new Error("no outer circle");
+    }
+    this.outer = outer;
+
+    /** @type {HTMLDivElement | null} */
+    const inner = outer.querySelector(".joystick-inner");
+    if (!inner) {
+      throw new Error("no inner circle");
+    }
+    this.inner = inner;
+
+    outer.addEventListener(
+      "touchmove",
+      (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        this.moveInner(touch.clientX, touch.clientY);
+      },
+      { passive: false },
+    );
+    outer.addEventListener("touchend", () => {
+      this.centerInner();
+    });
+
+    this.centerInner();
+  }
+
+  centerInner() {
+    const { width: outerWidth, height: outerHeight } =
+      this.outer.getBoundingClientRect();
+    const { width: innerWidth, height: innerHeight } =
+      this.inner.getBoundingClientRect();
+
+    const y = outerHeight / 2 - innerHeight / 2;
+    const x = outerWidth / 2 - innerWidth / 2;
+
+    this.inner.style.top = `${y}px`;
+    this.inner.style.left = `${x}px`;
+
+    this.dx = 0;
+    this.dy = 0;
+  }
+
+  moveInner(pageX, pageY) {
+    const {
+      top: outerTop,
+      left: outerLeft,
+      width: outerWidth,
+      height: outerHeight,
+    } = this.outer.getBoundingClientRect();
+    const { width: innerWidth, height: innerHeight } =
+      this.inner.getBoundingClientRect();
+
+    const r = outerWidth / 2;
+
+    const cx = outerLeft + outerWidth / 2;
+    const cy = outerTop + outerHeight / 2;
+
+    const isOutsideOuter =
+      Math.pow(pageX - cx, 2) + Math.pow(pageY - cy, 2) > Math.pow(r, 2);
+
+    let top;
+    let left;
+
+    if (!isOutsideOuter) {
+      top = pageY - outerTop - innerHeight / 2;
+      left = pageX - outerLeft - innerWidth / 2;
+    } else {
+      const dx = pageX - cx;
+      const dy = pageY - cy;
+
+      const l = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+      const ndx = dx / l;
+      const ndy = dy / l;
+
+      left = outerLeft + outerWidth - innerWidth / 2 - cx + ndx * r;
+      top = outerTop + outerHeight - innerHeight / 2 - cy + ndy * r;
+    }
+
+    this.inner.style.top = `${top}px`;
+    this.inner.style.left = `${left}px`;
+
+    this.dx = ((left + innerWidth / 2 - outerWidth / 2) / outerWidth) * 2;
+    this.dy = -((top + innerHeight / 2 - outerHeight / 2) / outerHeight) * 2;
+  }
+}

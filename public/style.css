@@ -3,6 +3,7 @@
 :root {
   --border-color: #171924;
   --light-bg-color: #0f121d;
+  --lighter-bg-color: #191d2a;
   --hover-bg-color: #1b2033;
 }
 
@@ -112,4 +113,35 @@ p {
   width: 45%;
   background-color: var(--border-color);
   margin: 0.75rem 0;
+}
+
+.joystick-outer {
+  height: 8rem;
+  aspect-ratio: 1/1;
+  background-color: var(--lighter-bg-color);
+  border-radius: 100%;
+  position: relative;
+  border: 2px solid #4e5e77;
+}
+.joystick-inner {
+  height: 30%;
+  aspect-ratio: 1/1;
+  background-color: #454b60;
+  border-radius: 100%;
+  position: absolute;
+  border: 1px solid var(--border-color);
+}
+
+.desktop-controls {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-controls {
+    display: none;
+  }
+
+  .desktop-controls {
+    display: block;
+  }
 }
